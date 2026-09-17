@@ -20,24 +20,3 @@ class Constants {
   static const String appName = 'News App';
   static const String appVersion = '1.0.0';
 }
-
-/// Spacing konsisten untuk padding/margin di semua view.
-class AppSpacing {
-  AppSpacing._();
-
-  static const xs = 4.0;
-  static const sm = 8.0;
-  static const md = 12.0;
-  static const lg = 16.0;
-  static const xl = 24.0;
-}
-
-/// Border radius konsisten untuk card, chip, dan tombol.
-class AppRadius {
-  AppRadius._();
-
-  static const sm = 8.0;
-  static const md = 12.0;
-  static const lg = 16.0;
-  static const pill = 100.0;
-}

@@ -1,4 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Akses internet untuk memanggil NewsAPI & memuat gambar. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+
     <application
         android:label="news_app"
         android:name="${applicationName}"
@@ -40,6 +43,11 @@
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+        <!-- Dibutuhkan canLaunchUrl (url_launcher) untuk membuka link https di Android 11+. -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="https"/>
         </intent>
     </queries>
 </manifest>
