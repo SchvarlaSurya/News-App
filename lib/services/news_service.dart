@@ -84,25 +84,33 @@ class NewsService {
       );
     }
 
-    late final NewsResponse result;
+    late final Map<String, dynamic> data;
     try {
-      result = NewsResponse.fromJson(
-        jsonDecode(response.body) as Map<String, dynamic>,
-      );
+      data = jsonDecode(response.body) as Map<String, dynamic>;
     } on FormatException {
       throw NewsServiceException(
         'Gagal membaca data dari server (format tidak valid).',
       );
     }
 
-    if (response.statusCode != 200 || !result.isOk) {
+    // Saat error, NewsAPI mengirim {status: 'error', code, message}.
+    if (response.statusCode != 200 || data['status'] != 'ok') {
       throw NewsServiceException(
         'Gagal mengambil berita (kode ${response.statusCode}): '
-        '${result.message ?? 'Kesalahan tidak diketahui.'}',
+        '${data['message'] ?? 'Kesalahan tidak diketahui.'}',
       );
     }
 
-    return result;
+    final result = NewsResponse.fromJson(data);
+    return NewsResponse(
+      status: result.status,
+      totalResults: result.totalResults,
+      // Buang artikel tanpa URL (dipakai sebagai id bookmark) & artikel
+      // yang sudah dihapus NewsAPI (judulnya "[Removed]").
+      articles: result.articles
+          .where((a) => a.url != null && a.url!.isNotEmpty && a.title != '[Removed]')
+          .toList(),
+    );
   }
 
   void dispose() {

@@ -1,37 +1,21 @@
-import 'news_article.dart';
+import 'package:news_app/models/news_article.dart';
 
-/// Respons dari endpoint NewsAPI (`/top-headlines` & `/everything`).
-/// Kalau [status] == 'error', [code] & [message] berisi detail error.
+/// Membungkus daftar artikel beserta status dan total hasil dari NewsAPI.
 class NewsResponse {
-  final String status;
-  final int totalResults;
+  final String? status;
+  final int? totalResults;
   final List<NewsArticle> articles;
-  final String? code;
-  final String? message;
 
-  const NewsResponse({
-    required this.status,
-    this.totalResults = 0,
-    this.articles = const [],
-    this.code,
-    this.message,
-  });
-
-  bool get isOk => status == 'ok';
+  NewsResponse({this.status, this.totalResults, this.articles = const []});
 
   factory NewsResponse.fromJson(Map<String, dynamic> json) {
-    final articlesJson = json['articles'] as List<dynamic>? ?? [];
-
     return NewsResponse(
-      status: json['status'] ?? 'error',
-      totalResults: json['totalResults'] ?? 0,
-      articles: articlesJson
-          .map((item) => NewsArticle.fromJson(item as Map<String, dynamic>))
-          // NewsAPI kadang kirim artikel yang sudah dihapus.
-          .where((article) => article.title != '[Removed]' && article.url.isNotEmpty)
-          .toList(),
-      code: json['code'],
-      message: json['message'],
+      status: json['status'],
+      totalResults: json['totalResults'],
+      articles: (json['articles'] as List<dynamic>?)
+              ?.map((e) => NewsArticle.fromJson(e))
+              .toList() ??
+          [],
     );
   }
 }

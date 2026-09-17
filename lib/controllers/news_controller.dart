@@ -97,7 +97,7 @@ class NewsController extends GetxController {
       final response = await _request(_currentPage);
       if (requestId != _requestId) return;
       articles.assignAll(response.articles);
-      hasMore.value = Constants.pageSize < response.totalResults;
+      hasMore.value = Constants.pageSize < (response.totalResults ?? 0);
     } on NewsServiceException catch (e) {
       if (requestId != _requestId) return;
       errorMessage.value = e.message;
@@ -125,7 +125,7 @@ class NewsController extends GetxController {
       articles.addAll(response.articles);
       _currentPage = nextPage;
       hasMore.value = response.articles.isNotEmpty &&
-          nextPage * Constants.pageSize < response.totalResults;
+          nextPage * Constants.pageSize < (response.totalResults ?? 0);
     } on NewsServiceException catch (e) {
       if (requestId != _requestId) return;
       // Error di halaman lanjutan (mis. batas 100 hasil paket gratis):

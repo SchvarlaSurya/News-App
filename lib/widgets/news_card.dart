@@ -18,7 +18,11 @@ class NewsCard extends StatefulWidget {
   const NewsCard({super.key, required this.article, this.onTap, this.index = 0});
 
   /// Format waktu relatif ("2 jam lalu"); jatuh ke tanggal kalau lebih dari 7 hari.
-  static String formatPublishedAt(DateTime publishedAt) {
+  /// [raw] berupa string ISO 8601 dari API (bisa null / tidak valid).
+  static String formatPublishedAt(String? raw) {
+    final publishedAt = parsePublishedAt(raw);
+    if (publishedAt == null) return '';
+
     final diff = DateTime.now().difference(publishedAt);
 
     if (diff.inSeconds < 60) return 'Baru saja';
@@ -26,6 +30,13 @@ class NewsCard extends StatefulWidget {
     if (diff.inHours < 24) return '${diff.inHours} jam lalu';
     if (diff.inDays < 7) return '${diff.inDays} hari lalu';
     return DateFormat('d MMM yyyy', 'id_ID').format(publishedAt);
+  }
+
+  /// Ubah string `publishedAt` dari API menjadi [DateTime] waktu lokal.
+  /// Return null kalau tidak bisa dipakai.
+  static DateTime? parsePublishedAt(String? raw) {
+    // TODO(human): parse raw jadi DateTime lokal, tangani null / format rusak.
+    return null;
   }
 
   @override
@@ -107,7 +118,7 @@ class _NewsCardState extends State<NewsCard> with SingleTickerProviderStateMixin
                           right: AppSpacing.md,
                           bottom: AppSpacing.sm,
                           child: Text(
-                            article.title,
+                            article.title ?? 'Tanpa judul',
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: theme.textTheme.titleMedium?.copyWith(color: AppColors.onImage),
@@ -127,7 +138,7 @@ class _NewsCardState extends State<NewsCard> with SingleTickerProviderStateMixin
                       children: [
                         Expanded(
                           child: Text(
-                            article.source.name,
+                            article.source?.name ?? 'Tidak diketahui',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: theme.textTheme.bodySmall?.copyWith(

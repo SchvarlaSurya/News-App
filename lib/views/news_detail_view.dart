@@ -13,8 +13,8 @@ class NewsDetailView extends StatelessWidget {
   const NewsDetailView({super.key});
 
   Future<void> _openFullArticle(NewsArticle article) async {
-    final uri = Uri.tryParse(article.url);
-    if (uri == null) {
+    final uri = Uri.tryParse(article.url ?? '');
+    if (uri == null || !uri.hasScheme) {
       Get.snackbar('Oops', 'Tautan berita tidak valid.', snackPosition: SnackPosition.BOTTOM);
       return;
     }
@@ -38,6 +38,7 @@ class NewsDetailView extends StatelessWidget {
 
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final publishedAt = NewsCard.parsePublishedAt(article.publishedAt);
     final body = (article.content == null || article.content!.isEmpty)
         ? (article.description ?? 'Konten tidak tersedia.')
         // NewsAPI memotong content dengan akhiran "[+1234 chars]".
@@ -97,15 +98,13 @@ class NewsDetailView extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(article.title, style: theme.textTheme.titleLarge),
+                  Text(article.title ?? 'Tanpa judul', style: theme.textTheme.titleLarge),
                   const SizedBox(height: AppSpacing.sm),
                   Row(
                     children: [
                       Expanded(
                         child: Text(
-                          article.author == null || article.author!.isEmpty
-                              ? article.source.name
-                              : '${article.source.name} · ${article.author}',
+                          article.source?.name ?? 'Tidak diketahui',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.bodySmall?.copyWith(
@@ -116,8 +115,9 @@ class NewsDetailView extends StatelessWidget {
                       ),
                       const SizedBox(width: AppSpacing.sm),
                       Text(
-                        DateFormat('d MMM yyyy, HH:mm', 'id_ID')
-                            .format(article.publishedAt.toLocal()),
+                        publishedAt == null
+                            ? ''
+                            : DateFormat('d MMM yyyy, HH:mm', 'id_ID').format(publishedAt),
                         style: theme.textTheme.bodySmall,
                       ),
                     ],
