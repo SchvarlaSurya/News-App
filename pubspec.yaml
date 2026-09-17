@@ -31,19 +31,16 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
+  get: ^4.7.2                    # State management & routing (GetX)
+  http: ^1.4.0                   # HTTP client untuk memanggil REST API
+  url_launcher: ^6.3.1           # Buka artikel di browser eksternal
+  share_plus: ^11.0.0            # Berbagi artikel ke aplikasi lain
+  cached_network_image: ^3.4.1   # Cache gambar dari network
+  timeago: ^3.7.1                # Format waktu "x menit lalu"
+  flutter_dotenv: ^5.2.1         # Membaca API key dari file .env
 
-  http: ^1.2.2
-  cached_network_image: ^3.4.1
-  intl: ^0.19.0
-  url_launcher: ^6.3.1
-  shared_preferences: ^2.3.3
-  shimmer: ^3.0.0
-  google_fonts: ^6.2.1
-  get: ^4.7.3
-  flutter_dotenv: ^6.0.1
+  
 
 dev_dependencies:
   flutter_test:
@@ -61,20 +58,10 @@ dev_dependencies:
 
 # The following section is specific to Flutter packages.
 flutter:
-
-  # The following line ensures that the Material Icons font is
-  # included with your application, so that you can use the icons in
-  # the material Icons class.
   uses-material-design: true
 
-  # File .env dibaca flutter_dotenv saat runtime (lihat main.dart).
   assets:
-    - .env
-
-  # To add assets to your application, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
-  #   - images/a_dot_ham.jpeg
+    - assets/.env
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

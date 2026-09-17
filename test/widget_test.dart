@@ -34,8 +34,8 @@ void main() {
   });
 
   test('parsePublishedAt handles valid, empty, broken and future dates', () {
-    final parsed = NewsCard.parsePublishedAt('2026-09-17T08:00:00Z');
-    expect(parsed, DateTime.utc(2026, 9, 17, 8).toLocal());
+    final parsed = NewsCard.parsePublishedAt('2020-01-15T08:00:00Z');
+    expect(parsed, DateTime.utc(2020, 1, 15, 8).toLocal());
     expect(parsed!.isUtc, isFalse);
 
     expect(NewsCard.parsePublishedAt(null), isNull);
