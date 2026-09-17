@@ -1,5 +1,3 @@
-/// Satu artikel berita. Semua field nullable untuk mengantisipasi
-/// data kosong dari API.
 class NewsArticle {
   final String? title;
   final String? description;
@@ -25,22 +23,8 @@ class NewsArticle {
       source: json['source'] != null ? Source.fromJson(json['source']) : null,
     );
   }
-
-  /// Dipakai untuk menyimpan bookmark ke shared_preferences.
-  Map<String, dynamic> toJson() {
-    return {
-      'title': title,
-      'description': description,
-      'url': url,
-      'urlToImage': urlToImage,
-      'publishedAt': publishedAt,
-      'content': content,
-      'source': source?.toJson(),
-    };
-  }
 }
 
-/// Sumber berita (object `source` di respons NewsAPI).
 class Source {
   final String? id;
   final String? name;
@@ -50,6 +34,4 @@ class Source {
   factory Source.fromJson(Map<String, dynamic> json) {
     return Source(id: json['id'], name: json['name']);
   }
-
-  Map<String, dynamic> toJson() => {'id': id, 'name': name};
 }

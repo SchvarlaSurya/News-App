@@ -1,9 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 
-import '../controllers/news_controller.dart';
 import '../models/news_article.dart';
 import '../utils/app_colors.dart';
 import '../utils/constants.dart';
@@ -29,7 +27,7 @@ class NewsCard extends StatefulWidget {
     if (diff.inMinutes < 60) return '${diff.inMinutes} menit lalu';
     if (diff.inHours < 24) return '${diff.inHours} jam lalu';
     if (diff.inDays < 7) return '${diff.inDays} hari lalu';
-    return DateFormat('d MMM yyyy', 'id_ID').format(publishedAt);
+    return DateFormat('d MMM yyyy').format(publishedAt);
   }
 
   /// Ubah string `publishedAt` dari API menjadi [DateTime] waktu lokal.
@@ -131,11 +129,6 @@ class _NewsCardState extends State<NewsCard> with SingleTickerProviderStateMixin
                             style: theme.textTheme.titleMedium?.copyWith(color: AppColors.onImage),
                           ),
                         ),
-                        Positioned(
-                          top: AppSpacing.xs,
-                          right: AppSpacing.xs,
-                          child: BookmarkButton(article: article),
-                        ),
                       ],
                     ),
                   ),
@@ -204,79 +197,6 @@ class NewsImage extends StatelessWidget {
         ),
       ),
       errorWidget: (context, _, _) => fallback(Icons.image_not_supported_outlined),
-    );
-  }
-}
-
-/// Tombol bookmark bulat (untuk di atas gambar) dengan animasi scale bounce.
-class BookmarkButton extends StatefulWidget {
-  final NewsArticle article;
-  final double size;
-
-  const BookmarkButton({super.key, required this.article, this.size = 20});
-
-  @override
-  State<BookmarkButton> createState() => _BookmarkButtonState();
-}
-
-class _BookmarkButtonState extends State<BookmarkButton> with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 300),
-  );
-  late final Animation<double> _scale = TweenSequence<double>([
-    TweenSequenceItem(
-      tween: Tween(begin: 1.0, end: 1.35).chain(CurveTween(curve: Curves.easeOut)),
-      weight: 45,
-    ),
-    TweenSequenceItem(
-      tween: Tween(begin: 1.35, end: 1.0).chain(CurveTween(curve: Curves.elasticOut)),
-      weight: 55,
-    ),
-  ]).animate(_controller);
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final newsController = Get.find<NewsController>();
-
-    return Material(
-      color: Colors.transparent,
-      shape: const CircleBorder(),
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: () {
-          _controller.forward(from: 0);
-          newsController.toggleBookmark(widget.article);
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(6),
-          child: ScaleTransition(
-            scale: _scale,
-            child: Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.scrim.withValues(alpha: 0.35),
-              ),
-              child: Obx(
-                () => Icon(
-                  newsController.isBookmarked(widget.article)
-                      ? Icons.bookmark_rounded
-                      : Icons.bookmark_border_rounded,
-                  size: widget.size,
-                  color: AppColors.onImage,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

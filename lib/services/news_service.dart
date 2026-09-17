@@ -20,16 +20,20 @@ class NewsService {
         'page': page.toString(),
         'pageSize': pageSize.toString(),
       };
+
       if (category != null && category.isNotEmpty) {
         queryParams['category'] = category;
       }
 
-      final uri = Uri.parse('$_baseUrl${Constants.topHeadlines}')
-          .replace(queryParameters: queryParams);
+      final uri = Uri.parse(
+        '$_baseUrl${Constants.topHeadlines}',
+      ).replace(queryParameters: queryParams);
+
       final response = await http.get(uri);
 
       if (response.statusCode == 200) {
-        return NewsResponse.fromJson(json.decode(response.body));
+        final jsonData = json.decode(response.body);
+        return NewsResponse.fromJson(jsonData);
       } else {
         throw Exception('Failed to load news: ${response.statusCode}');
       }
@@ -51,16 +55,20 @@ class NewsService {
         'page': page.toString(),
         'pageSize': pageSize.toString(),
       };
+
       if (sortBy != null && sortBy.isNotEmpty) {
         queryParams['sortBy'] = sortBy;
       }
 
-      final uri = Uri.parse('$_baseUrl${Constants.everything}')
-          .replace(queryParameters: queryParams);
+      final uri = Uri.parse(
+        '$_baseUrl${Constants.everything}',
+      ).replace(queryParameters: queryParams);
+
       final response = await http.get(uri);
 
       if (response.statusCode == 200) {
-        return NewsResponse.fromJson(json.decode(response.body));
+        final jsonData = json.decode(response.body);
+        return NewsResponse.fromJson(jsonData);
       } else {
         throw Exception('Failed to search news: ${response.statusCode}');
       }

@@ -62,18 +62,12 @@ class NewsDetailView extends StatelessWidget {
                 ),
               ),
             ),
-            actions: [
-              Padding(
-                padding: const EdgeInsets.only(right: AppSpacing.sm),
-                child: BookmarkButton(article: article),
-              ),
-            ],
             flexibleSpace: FlexibleSpaceBar(
               background: Stack(
                 fit: StackFit.expand,
                 children: [
                   NewsImage(url: article.urlToImage, iconSize: 48),
-                  // Scrim biar tombol back/bookmark tetap kebaca di atas gambar.
+                  // Scrim biar tombol back tetap kebaca di atas gambar.
                   DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
@@ -117,7 +111,7 @@ class NewsDetailView extends StatelessWidget {
                       Text(
                         publishedAt == null
                             ? ''
-                            : DateFormat('d MMM yyyy, HH:mm', 'id_ID').format(publishedAt),
+                            : DateFormat('d MMM yyyy, HH:mm').format(publishedAt),
                         style: theme.textTheme.bodySmall,
                       ),
                     ],

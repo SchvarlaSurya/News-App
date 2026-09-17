@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-import '../routes/app_routes.dart';
+import '../routes/app_pages.dart';
 import '../utils/constants.dart';
 
 class SplashView extends StatefulWidget {
@@ -25,7 +25,7 @@ class _SplashViewState extends State<SplashView> with SingleTickerProviderStateM
   void initState() {
     super.initState();
     Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) Get.offAllNamed(AppRoutes.home);
+      if (mounted) Get.offAllNamed(Routes.HOME);
     });
   }
 

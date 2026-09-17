@@ -1,6 +1,5 @@
 import 'package:news_app/models/news_article.dart';
 
-/// Membungkus daftar artikel beserta status dan total hasil dari NewsAPI.
 class NewsResponse {
   final String? status;
   final int? totalResults;

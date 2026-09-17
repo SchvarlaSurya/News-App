@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../controllers/news_controller.dart';
-import '../models/news_article.dart';
-import '../routes/app_routes.dart';
+import '../routes/app_pages.dart';
 import '../utils/constants.dart';
 import '../widgets/category_chip.dart';
 import '../widgets/loading_shimmer.dart';
@@ -13,197 +12,127 @@ import '../widgets/news_card.dart';
 class HomeView extends GetView<NewsController> {
   const HomeView({super.key});
 
-  void _openDetail(NewsArticle article) {
-    Get.toNamed(AppRoutes.newsDetail, arguments: article);
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Obx(
-      () => PopScope(
-        // Tombol back menutup search dulu sebelum keluar aplikasi.
-        canPop: !controller.isSearching.value,
-        onPopInvokedWithResult: (didPop, _) {
-          if (!didPop) controller.closeSearch();
-        },
-        child: Scaffold(
-          appBar: controller.isSearching.value ? _buildSearchAppBar() : _buildAppBar(),
-          body: Column(
-            children: [
-              _buildCategoryBar(),
-              const Divider(height: 1),
-              Expanded(child: _buildBody()),
-            ],
+    return Scaffold(
+      appBar: AppBar(title: const Text('Berita Hari Ini')),
+      body: Column(
+        children: [
+          _SearchField(
+            onSubmitted: (query) {
+              final trimmed = query.trim();
+              // Kolom dikosongkan: kembali ke top headlines kategori aktif.
+              trimmed.isEmpty ? controller.refreshNews() : controller.searchNews(trimmed);
+            },
           ),
-        ),
+          _buildCategoryBar(),
+          const Divider(height: 1),
+          Expanded(child: Obx(_buildBody)),
+        ],
       ),
-    );
-  }
-
-  PreferredSizeWidget _buildAppBar() {
-    return AppBar(
-      title: const Text('Berita Hari Ini'),
-      actions: [
-        IconButton(
-          tooltip: 'Cari',
-          icon: const Icon(Icons.search),
-          onPressed: controller.openSearch,
-        ),
-        IconButton(
-          tooltip: 'Ganti tema',
-          icon: Icon(
-            controller.isDarkMode.value ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
-          ),
-          onPressed: controller.toggleTheme,
-        ),
-      ],
-    );
-  }
-
-  PreferredSizeWidget _buildSearchAppBar() {
-    return AppBar(
-      leading: IconButton(
-        icon: const Icon(Icons.arrow_back),
-        onPressed: controller.closeSearch,
-      ),
-      title: TextField(
-        controller: controller.searchTextController,
-        autofocus: true,
-        textInputAction: TextInputAction.search,
-        decoration: const InputDecoration(
-          hintText: 'Cari berita...',
-          border: InputBorder.none,
-        ),
-        onChanged: controller.onSearchChanged,
-        onSubmitted: controller.onSearchChanged,
-      ),
-      actions: [
-        IconButton(
-          tooltip: 'Hapus',
-          icon: const Icon(Icons.clear),
-          onPressed: () {
-            controller.searchTextController.clear();
-            controller.onSearchChanged('');
-          },
-        ),
-      ],
     );
   }
 
   Widget _buildCategoryBar() {
-    // Kategori disembunyikan selama hasil pencarian tampil (search lintas kategori).
-    if (controller.isSearchMode) return const SizedBox.shrink();
-
     return SizedBox(
       height: 48,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
-        // +1 untuk chip "Tersimpan" (bookmark) di akhir.
-        itemCount: Constants.categories.length + 1,
-        separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.sm),
-        itemBuilder: (context, index) {
-          final isBookmarkChip = index == Constants.categories.length;
-          final category =
-              isBookmarkChip ? Constants.bookmarksCategory : Constants.categories[index];
-
-          return CategoryChip(
-            label: isBookmarkChip ? 'Tersimpan' : category.capitalizeFirst!,
-            icon: isBookmarkChip ? Icons.bookmark_rounded : null,
-            selected: controller.selectedCategory.value == category,
-            onTap: () => controller.changeCategory(category),
-          );
-        },
+      child: Obx(
+        () => ListView.separated(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
+          itemCount: controller.categories.length,
+          separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.sm),
+          itemBuilder: (context, index) {
+            final category = controller.categories[index];
+            return CategoryChip(
+              label: category.capitalizeFirst!,
+              selected: controller.selectedCategory == category,
+              onTap: () => controller.selectCategory(category),
+            );
+          },
+        ),
       ),
     );
   }
 
   Widget _buildBody() {
-    if (controller.isBookmarkMode && !controller.isSearchMode) {
-      return _buildBookmarkList();
-    }
-
-    if (controller.isLoading.value) {
+    if (controller.isLoading) {
       return const LoadingShimmer();
     }
 
-    if (controller.errorMessage.value != null) {
-      return _ErrorState(
-        message: controller.errorMessage.value!,
-        onRetry: controller.fetchNews,
-      );
-    }
+    final articles = controller.articles;
 
-    if (controller.articles.isEmpty) {
-      return controller.isSearchMode
-          ? const _EmptyState(
-              icon: Icons.search_off_rounded,
-              title: 'Gak ketemu, nih',
-              subtitle: 'Coba kata kunci lain ya.',
-            )
+    if (articles.isEmpty) {
+      return controller.error.isNotEmpty
+          ? _ErrorState(message: controller.error, onRetry: controller.refreshNews)
           : const _EmptyState(
               icon: Icons.newspaper_rounded,
               title: 'Sepi banget di sini',
-              subtitle: 'Belum ada berita untuk kategori ini.',
+              subtitle: 'Belum ada berita untuk ditampilkan.',
             );
     }
 
-    final articles = controller.articles;
-    final showFooter = controller.isLoadingMore.value;
-
     return RefreshIndicator(
-      onRefresh: controller.fetchNews,
+      onRefresh: controller.refreshNews,
       child: ListView.builder(
-        controller: controller.scrollController,
         physics: const AlwaysScrollableScrollPhysics(),
-        itemCount: articles.length + (showFooter ? 1 : 0),
+        itemCount: articles.length,
         itemBuilder: (context, index) {
-          if (index >= articles.length) {
-            return const Padding(
-              padding: EdgeInsets.symmetric(vertical: AppSpacing.lg),
-              child: Center(
-                child: SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-              ),
-            );
-          }
           final article = articles[index];
           return NewsCard(
-            key: ValueKey(article.url),
+            key: ValueKey('${article.url}-$index'),
             article: article,
             index: index,
-            onTap: () => _openDetail(article),
+            onTap: () => Get.toNamed(Routes.NEWS_DETAIL, arguments: article),
           );
         },
       ),
     );
   }
+}
 
-  Widget _buildBookmarkList() {
-    final bookmarks = controller.bookmarks;
+/// Kolom pencarian; request dikirim saat user menekan tombol search di keyboard.
+class _SearchField extends StatefulWidget {
+  final ValueChanged<String> onSubmitted;
 
-    if (bookmarks.isEmpty) {
-      return const _EmptyState(
-        icon: Icons.bookmark_border_rounded,
-        title: 'Belum ada yang disimpan',
-        subtitle: 'Ketuk ikon bookmark di berita buat simpan di sini.',
-      );
-    }
+  const _SearchField({required this.onSubmitted});
 
-    return ListView.builder(
-      itemCount: bookmarks.length,
-      itemBuilder: (context, index) {
-        final article = bookmarks[index];
-        return NewsCard(
-          key: ValueKey(article.url),
-          article: article,
-          index: index,
-          onTap: () => _openDetail(article),
-        );
-      },
+  @override
+  State<_SearchField> createState() => _SearchFieldState();
+}
+
+class _SearchFieldState extends State<_SearchField> {
+  final _textController = TextEditingController();
+
+  @override
+  void dispose() {
+    _textController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, 0),
+      child: TextField(
+        controller: _textController,
+        textInputAction: TextInputAction.search,
+        onSubmitted: widget.onSubmitted,
+        decoration: InputDecoration(
+          hintText: 'Cari berita...',
+          prefixIcon: const Icon(Icons.search),
+          suffixIcon: IconButton(
+            tooltip: 'Hapus',
+            icon: const Icon(Icons.clear),
+            onPressed: () {
+              _textController.clear();
+              widget.onSubmitted('');
+            },
+          ),
+          isDense: true,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.pill)),
+        ),
+      ),
     );
   }
 }

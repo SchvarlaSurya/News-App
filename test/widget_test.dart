@@ -46,7 +46,7 @@ void main() {
     expect(NewsCard.parsePublishedAt(future)!.isAfter(DateTime.now()), isFalse);
   });
 
-  test('NewsArticle survives JSON round trip (bookmark storage)', () {
+  test('NewsArticle parses source when present', () {
     final article = NewsArticle.fromJson({
       'source': {'id': 'bbc', 'name': 'BBC'},
       'title': 'Hello',
@@ -55,10 +55,8 @@ void main() {
       'publishedAt': '2026-09-17T08:00:00Z',
     });
 
-    final copy = NewsArticle.fromJson(article.toJson());
-
-    expect(copy.url, article.url);
-    expect(copy.source?.id, 'bbc');
-    expect(copy.publishedAt, article.publishedAt);
+    expect(article.url, 'https://example.com/b');
+    expect(article.source?.id, 'bbc');
+    expect(article.publishedAt, '2026-09-17T08:00:00Z');
   });
 }
