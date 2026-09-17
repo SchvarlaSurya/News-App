@@ -35,8 +35,15 @@ class NewsCard extends StatefulWidget {
   /// Ubah string `publishedAt` dari API menjadi [DateTime] waktu lokal.
   /// Return null kalau tidak bisa dipakai.
   static DateTime? parsePublishedAt(String? raw) {
-    // TODO(human): parse raw jadi DateTime lokal, tangani null / format rusak.
-    return null;
+    if (raw == null || raw.trim().isEmpty) return null;
+
+    // tryParse: format rusak -> null, bukan exception yang bikin UI crash.
+    final parsed = DateTime.tryParse(raw.trim())?.toLocal();
+    if (parsed == null) return null;
+
+    // Jam server bisa sedikit di depan jam HP; jangan tampilkan "-3 menit lalu".
+    final now = DateTime.now();
+    return parsed.isAfter(now) ? now : parsed;
   }
 
   @override
