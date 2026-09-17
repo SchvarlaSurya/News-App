@@ -11,7 +11,8 @@ class NewsResponse {
     return NewsResponse(
       status: json['status'],
       totalResults: json['totalResults'],
-      articles: (json['articles'] as List<dynamic>?)
+      articles:
+          (json['articles'] as List<dynamic>?)
               ?.map((e) => NewsArticle.fromJson(e))
               .toList() ??
           [],

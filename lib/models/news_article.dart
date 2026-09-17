@@ -8,8 +8,13 @@ class NewsArticle {
   final Source? source;
 
   NewsArticle({
-    this.title, this.description, this.url, this.urlToImage,
-    this.publishedAt, this.content, this.source,
+    this.title,
+    this.description,
+    this.url,
+    this.urlToImage,
+    this.publishedAt,
+    this.content,
+    this.source,
   });
 
   factory NewsArticle.fromJson(Map<String, dynamic> json) {

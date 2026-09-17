@@ -12,8 +12,13 @@ class Constants {
 
   // Categories
   static const List<String> categories = [
-    'general', 'technology', 'business', 'sports',
-    'health', 'science', 'entertainment',
+    'general',
+    'technology',
+    'business',
+    'sports',
+    'health',
+    'science',
+    'entertainment',
   ];
 
   static const String defaultCountry = 'us';
