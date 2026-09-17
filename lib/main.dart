@@ -13,7 +13,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Load environment variables
-  await dotenv.load(fileName: '.env');
+  await dotenv.load(fileName: 'assets/.env');
 
   await initializeDateFormatting('id_ID');
 

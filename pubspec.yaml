@@ -39,9 +39,10 @@ dependencies:
   cached_network_image: ^3.4.1   # Cache gambar dari network
   timeago: ^3.7.1                # Format waktu "x menit lalu"
   flutter_dotenv: ^5.2.1         # Membaca API key dari file .env
-
-  
-
+  shared_preferences: ^2.5.5     # Simpan bookmark & pilihan tema
+  intl: ^0.20.3                  # Format tanggal (locale id_ID)
+  shimmer: ^3.0.0                # Efek loading shimmer
+  google_fonts: ^8.2.1           # Font Poppins & Inter
 dev_dependencies:
   flutter_test:
     sdk: flutter
