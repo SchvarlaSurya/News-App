@@ -1,222 +1,176 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:news_app/controllers/news_controller.dart';
+import 'package:news_app/routes/app_pages.dart';
+import 'package:news_app/utils/app_colors.dart';
+import 'package:news_app/widgets/news_card.dart';
+import 'package:news_app/widgets/category_chip.dart';
+import 'package:news_app/widgets/loading_shimmer.dart';
 
-import '../controllers/news_controller.dart';
-import '../routes/app_pages.dart';
-import '../utils/constants.dart';
-import '../widgets/category_chip.dart';
-import '../widgets/loading_shimmer.dart';
-import '../widgets/news_card.dart';
-
-/// Daftar berita + filter kategori + search.
 class HomeView extends GetView<NewsController> {
-  const HomeView({super.key});
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Berita Hari Ini')),
+      appBar: AppBar(
+        title: Text('News App'),
+        centerTitle: true,
+        actions: [
+          IconButton(
+            icon: Icon(Icons.search),
+            onPressed: () => _showSearchDialog(context),
+          ),
+        ],
+      ),
       body: Column(
         children: [
-          _SearchField(
-            onSubmitted: (query) {
-              final trimmed = query.trim();
-              // Kolom dikosongkan: kembali ke top headlines kategori aktif.
-              trimmed.isEmpty ? controller.refreshNews() : controller.searchNews(trimmed);
-            },
+          // Categories
+          Container(
+            height: 60,
+            color: Colors.white,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              itemCount: controller.categories.length,
+              itemBuilder: (context, index) {
+                final category = controller.categories[index];
+                return Obx(
+                  () => CategoryChip(
+                    label: category.capitalize ?? category,
+                    isSelected: controller.selectedCategory == category,
+                    onTap: () => controller.selectCategory(category),
+                  ),
+                );
+              },
+            ),
           ),
-          _buildCategoryBar(),
-          const Divider(height: 1),
-          Expanded(child: Obx(_buildBody)),
+
+          // News List
+          Expanded(
+            child: Obx(() {
+              if (controller.isLoading) {
+                return LoadingShimmer();
+              }
+
+              if (controller.error.isNotEmpty) {
+                return _buildErrorWidget();
+              }
+
+              if (controller.articles.isEmpty) {
+                return _buildEmptyWidget();
+              }
+
+              return RefreshIndicator(
+                onRefresh: controller.refreshNews,
+                child: ListView.builder(
+                  padding: EdgeInsets.all(16),
+                  itemCount: controller.articles.length,
+                  itemBuilder: (context, index) {
+                    final article = controller.articles[index];
+                    return NewsCard(
+                      article: article,
+                      onTap: () =>
+                          Get.toNamed(Routes.NEWS_DETAIL, arguments: article),
+                    );
+                  },
+                ),
+              );
+            }),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildCategoryBar() {
-    return SizedBox(
-      height: 56,
-      child: Obx(
-        () => ListView.builder(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-          itemCount: controller.categories.length,
-          itemBuilder: (context, index) {
-            final category = controller.categories[index];
-            return CategoryChip(
-              label: category.capitalizeFirst!,
-              isSelected: controller.selectedCategory == category,
-              onTap: () => controller.selectCategory(category),
-            );
+  Widget _buildErrorWidget() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.error_outline, size: 64, color: AppColors.error),
+          SizedBox(height: 16),
+          Text(
+            'Something went wrong',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          SizedBox(height: 8),
+          Text(
+            'Please check your internet connection',
+            style: TextStyle(color: AppColors.textSecondary),
+          ),
+          SizedBox(height: 24),
+          ElevatedButton(
+            onPressed: controller.refreshNews,
+            child: Text('Retry'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyWidget() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.newspaper, size: 64, color: AppColors.textHint),
+          SizedBox(height: 16),
+          Text(
+            'No news available',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          SizedBox(height: 8),
+          Text(
+            'Please try again later',
+            style: TextStyle(color: AppColors.textSecondary),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSearchDialog(BuildContext context) {
+    final TextEditingController searchController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Search News'),
+        content: TextField(
+          controller: searchController,
+          decoration: InputDecoration(
+            hintText: 'Enter search term...',
+            border: OutlineInputBorder(),
+          ),
+          onSubmitted: (value) {
+            if (value.isNotEmpty) {
+              controller.searchNews(value);
+              Navigator.of(context).pop();
+            }
           },
         ),
-      ),
-    );
-  }
-
-  Widget _buildBody() {
-    if (controller.isLoading) {
-      return LoadingShimmer();
-    }
-
-    final articles = controller.articles;
-
-    if (articles.isEmpty) {
-      return controller.error.isNotEmpty
-          ? _ErrorState(message: controller.error, onRetry: controller.refreshNews)
-          : const _EmptyState(
-              icon: Icons.newspaper_rounded,
-              title: 'Sepi banget di sini',
-              subtitle: 'Belum ada berita untuk ditampilkan.',
-            );
-    }
-
-    return RefreshIndicator(
-      onRefresh: controller.refreshNews,
-      child: ListView.builder(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        itemCount: articles.length,
-        itemBuilder: (context, index) {
-          final article = articles[index];
-          return NewsCard(
-            article: article,
-            onTap: () => Get.toNamed(Routes.NEWS_DETAIL, arguments: article),
-          );
-        },
-      ),
-    );
-  }
-}
-
-/// Kolom pencarian; request dikirim saat user menekan tombol search di keyboard.
-class _SearchField extends StatefulWidget {
-  final ValueChanged<String> onSubmitted;
-
-  const _SearchField({required this.onSubmitted});
-
-  @override
-  State<_SearchField> createState() => _SearchFieldState();
-}
-
-class _SearchFieldState extends State<_SearchField> {
-  final _textController = TextEditingController();
-
-  @override
-  void dispose() {
-    _textController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, 0),
-      child: TextField(
-        controller: _textController,
-        textInputAction: TextInputAction.search,
-        onSubmitted: widget.onSubmitted,
-        decoration: InputDecoration(
-          hintText: 'Cari berita...',
-          prefixIcon: const Icon(Icons.search),
-          suffixIcon: IconButton(
-            tooltip: 'Hapus',
-            icon: const Icon(Icons.clear),
-            onPressed: () {
-              _textController.clear();
-              widget.onSubmitted('');
-            },
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('Cancel'),
           ),
-          isDense: true,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.pill)),
-        ),
-      ),
-    );
-  }
-}
-
-/// Ilustrasi kosong: icon besar dalam lingkaran lembut + copy santai.
-class _EmptyState extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String? subtitle;
-
-  const _EmptyState({required this.icon, required this.title, this.subtitle});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.xl),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: colorScheme.primary.withValues(alpha: 0.08),
-              ),
-              child: Icon(icon, size: 56, color: colorScheme.primary.withValues(alpha: 0.7)),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            Text(title, textAlign: TextAlign.center, style: theme.textTheme.titleSmall),
-            if (subtitle != null) ...[
-              const SizedBox(height: AppSpacing.xs),
-              Text(subtitle!, textAlign: TextAlign.center, style: theme.textTheme.bodySmall),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Error state dengan copy manusiawi + tombol retry.
-class _ErrorState extends StatelessWidget {
-  final String message;
-  final VoidCallback onRetry;
-
-  const _ErrorState({required this.message, required this.onRetry});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.xl),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: colorScheme.error.withValues(alpha: 0.1),
-              ),
-              child: Icon(Icons.wifi_off_rounded, size: 56, color: colorScheme.error),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            Text(
-              'Yah, koneksi lagi ngambek 😅',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.titleSmall,
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            Text(message, textAlign: TextAlign.center, style: theme.textTheme.bodySmall),
-            const SizedBox(height: AppSpacing.lg),
-            ElevatedButton.icon(
-              onPressed: onRetry,
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text('Coba Lagi'),
-            ),
-          ],
-        ),
+          ElevatedButton(
+            onPressed: () {
+              if (searchController.text.isNotEmpty) {
+                controller.searchNews(searchController.text);
+                Navigator.of(context).pop();
+              }
+            },
+            child: Text('Search'),
+          ),
+        ],
       ),
     );
   }

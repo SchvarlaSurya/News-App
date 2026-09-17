@@ -8,6 +8,8 @@ class AppColors {
   static const Color textSecondary = Color(0xFF6B7280);
   static const Color textHint = Color(0xFF9CA3AF);
 
+  static const Color error = Color(0xFFD32F2F);
+
   static const Color divider = Color(0xFFE5E7EB);
   static const Color cardShadow = Color(0x1F000000);
 
