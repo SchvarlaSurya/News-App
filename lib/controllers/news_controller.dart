@@ -72,14 +72,42 @@ class NewsController extends GetxController {
   // Berita
   // ---------------------------------------------------------------------------
 
-  Future<NewsResponse> _request(int page) {
-    if (isSearchMode) {
-      return _newsService.searchNews(searchQuery.value, page: page);
-    }
-    return _newsService.getTopHeadlines(
-      category: selectedCategory.value,
-      page: page,
+  Future<NewsResponse> _request(int page) async {
+    final response = isSearchMode
+        ? await _newsService.searchNews(
+            query: searchQuery.value,
+            page: page,
+            pageSize: Constants.pageSize,
+            sortBy: 'publishedAt',
+          )
+        : await _newsService.getTopHeadlines(
+            category: selectedCategory.value,
+            page: page,
+            pageSize: Constants.pageSize,
+          );
+
+    // Buang artikel tanpa URL (dipakai sebagai id bookmark) & artikel
+    // yang sudah dihapus NewsAPI (judulnya "[Removed]").
+    return NewsResponse(
+      status: response.status,
+      totalResults: response.totalResults,
+      articles: response.articles
+          .where((a) => a.url != null && a.url!.isNotEmpty && a.title != '[Removed]')
+          .toList(),
     );
+  }
+
+  /// Ubah exception dari NewsService jadi pesan yang bisa dibaca pengguna.
+  String _errorText(Object error) {
+    // NewsService membungkus error dua kali: "Exception: Network error: Exception: ..."
+    final detail = error.toString().replaceAll('Exception: ', '');
+    if (Constants.apiKey.isEmpty) {
+      return 'API key belum diatur. Isi API_KEY di file assets/.env lalu restart aplikasi.';
+    }
+    if (detail.contains(': 401')) return 'API key tidak valid. Periksa API_KEY di assets/.env.';
+    if (detail.contains(': 426')) return 'Batas hasil pencarian paket gratis NewsAPI tercapai.';
+    if (detail.contains(': 429')) return 'Terlalu banyak permintaan. Coba lagi nanti.';
+    return 'Gagal mengambil berita. Periksa koneksi internet Anda.\n($detail)';
   }
 
   /// Muat halaman pertama sesuai mode aktif (search atau kategori).
@@ -98,12 +126,9 @@ class NewsController extends GetxController {
       if (requestId != _requestId) return;
       articles.assignAll(response.articles);
       hasMore.value = Constants.pageSize < (response.totalResults ?? 0);
-    } on NewsServiceException catch (e) {
-      if (requestId != _requestId) return;
-      errorMessage.value = e.message;
     } catch (e) {
       if (requestId != _requestId) return;
-      errorMessage.value = 'Terjadi kesalahan tak terduga: $e';
+      errorMessage.value = _errorText(e);
     } finally {
       if (requestId == _requestId) isLoading.value = false;
     }
@@ -126,15 +151,12 @@ class NewsController extends GetxController {
       _currentPage = nextPage;
       hasMore.value = response.articles.isNotEmpty &&
           nextPage * Constants.pageSize < (response.totalResults ?? 0);
-    } on NewsServiceException catch (e) {
+    } catch (e) {
       if (requestId != _requestId) return;
       // Error di halaman lanjutan (mis. batas 100 hasil paket gratis):
       // stop pagination, tetap tampilkan list yang sudah ada.
       hasMore.value = false;
-      Get.snackbar('Gagal memuat lagi', e.message, snackPosition: SnackPosition.BOTTOM);
-    } catch (_) {
-      if (requestId != _requestId) return;
-      hasMore.value = false;
+      Get.snackbar('Gagal memuat lagi', _errorText(e), snackPosition: SnackPosition.BOTTOM);
     } finally {
       if (requestId == _requestId) isLoadingMore.value = false;
     }
