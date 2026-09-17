@@ -1,24 +1,28 @@
 import 'package:flutter/material.dart';
 
-import '../utils/app_theme.dart';
+import '../utils/app_colors.dart';
+import '../utils/constants.dart';
 
-/// Chip kategori dengan state aktif (solid) vs tidak aktif (outline)
+/// Chip filter kategori dengan state aktif (solid) vs tidak aktif (outline)
 /// yang beda jelas, plus transisi warna halus.
 class CategoryChip extends StatelessWidget {
   final String label;
   final bool selected;
   final VoidCallback onTap;
+  final IconData? icon;
 
   const CategoryChip({
     super.key,
     required this.label,
     required this.selected,
     required this.onTap,
+    this.icon,
   });
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final foreground = selected ? AppColors.onImage : colorScheme.primary;
 
     return Material(
       color: Colors.transparent,
@@ -37,13 +41,22 @@ class CategoryChip extends StatelessWidget {
               width: 1.2,
             ),
           ),
-          child: AnimatedDefaultTextStyle(
-            duration: const Duration(milliseconds: 200),
-            style: Theme.of(context).textTheme.bodySmall!.copyWith(
-                  color: selected ? Colors.white : colorScheme.primary,
-                  fontWeight: FontWeight.w600,
-                ),
-            child: Text(label),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) ...[
+                Icon(icon, size: 14, color: foreground),
+                const SizedBox(width: AppSpacing.xs),
+              ],
+              AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 200),
+                style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                      color: foreground,
+                      fontWeight: FontWeight.w600,
+                    ),
+                child: Text(label),
+              ),
+            ],
           ),
         ),
       ),

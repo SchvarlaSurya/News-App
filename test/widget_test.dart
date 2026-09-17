@@ -1,30 +1,47 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:news_app/main.dart';
+import 'package:news_app/models/news_article.dart';
+import 'package:news_app/models/news_response.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  test('NewsResponse parses articles and drops removed ones', () {
+    final response = NewsResponse.fromJson({
+      'status': 'ok',
+      'totalResults': 2,
+      'articles': [
+        {
+          'source': {'id': null, 'name': 'Kompas'},
+          'title': 'Judul',
+          'url': 'https://example.com/a',
+          'publishedAt': '2026-09-17T08:00:00Z',
+        },
+        {
+          'source': {'id': null, 'name': '[Removed]'},
+          'title': '[Removed]',
+          'url': 'https://removed.com',
+        },
+      ],
+    });
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    expect(response.isOk, isTrue);
+    expect(response.articles, hasLength(1));
+    expect(response.articles.first.source.name, 'Kompas');
+  });
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+  test('NewsArticle survives JSON round trip (bookmark storage)', () {
+    final article = NewsArticle.fromJson({
+      'source': {'id': 'bbc', 'name': 'BBC'},
+      'title': 'Hello',
+      'url': 'https://example.com/b',
+      'urlToImage': 'https://example.com/b.jpg',
+      'publishedAt': '2026-09-17T08:00:00.000Z',
+    });
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    final copy = NewsArticle.fromJson(article.toJson());
+
+    expect(copy.url, article.url);
+    expect(copy.source.id, 'bbc');
+    expect(copy.publishedAt, article.publishedAt);
+    expect(copy.hasImage, isTrue);
   });
 }

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'constants.dart';
+
 /// Palet warna terpusat. Jangan hardcode Color(...) di widget lain —
 /// tambahkan token baru di sini kalau perlu.
 class AppColors {
@@ -23,73 +25,21 @@ class AppColors {
 
   static const textSecondaryLight = Color(0xFF6B7280);
   static const textSecondaryDark = Color(0xFFA3A3AD);
+
+  // Overlay di atas gambar (tombol bulat, scrim gradient).
+  static const onImage = Colors.white;
+  static const scrim = Colors.black;
+
+  // Shimmer
+  static final shimmerBaseLight = Colors.grey.shade300;
+  static final shimmerHighlightLight = Colors.grey.shade100;
+  static final shimmerBaseDark = Colors.grey.shade700;
+  static final shimmerHighlightDark = Colors.grey.shade600;
 }
 
-/// Spacing konsisten untuk padding/margin di semua screen.
-class AppSpacing {
-  AppSpacing._();
-
-  static const xs = 4.0;
-  static const sm = 8.0;
-  static const md = 12.0;
-  static const lg = 16.0;
-  static const xl = 24.0;
-}
-
-/// Border radius konsisten untuk card, chip, dan tombol.
-class AppRadius {
-  AppRadius._();
-
-  static const sm = 8.0;
-  static const md = 12.0;
-  static const lg = 16.0;
-  static const pill = 100.0;
-}
-
+/// ThemeData light & dark yang dibangun dari [AppColors].
 class AppTheme {
   AppTheme._();
-
-  static TextTheme _textTheme({
-    required Color textPrimary,
-    required Color textSecondary,
-  }) {
-    return TextTheme(
-      // Judul di ArticleDetailScreen.
-      titleLarge: GoogleFonts.poppins(
-        fontSize: 20,
-        fontWeight: FontWeight.w700,
-        height: 1.3,
-        color: textPrimary,
-      ),
-      // Judul artikel di ArticleCard (16-18sp bold).
-      titleMedium: GoogleFonts.poppins(
-        fontSize: 17,
-        fontWeight: FontWeight.w600,
-        height: 1.3,
-        color: textPrimary,
-      ),
-      titleSmall: GoogleFonts.poppins(
-        fontSize: 15,
-        fontWeight: FontWeight.w600,
-        height: 1.3,
-        color: textPrimary,
-      ),
-      // Body content (14sp, line-height nyaman dibaca).
-      bodyLarge: GoogleFonts.inter(fontSize: 16, height: 1.5, color: textPrimary),
-      bodyMedium: GoogleFonts.inter(fontSize: 14, height: 1.6, color: textPrimary),
-      // Source name + waktu publish (12sp, abu-abu).
-      bodySmall: GoogleFonts.inter(
-        fontSize: 12,
-        fontWeight: FontWeight.w500,
-        color: textSecondary,
-      ),
-      labelLarge: GoogleFonts.inter(
-        fontSize: 14,
-        fontWeight: FontWeight.w600,
-        color: textPrimary,
-      ),
-    );
-  }
 
   static ThemeData light = _build(
     brightness: Brightness.light,
@@ -110,6 +60,47 @@ class AppTheme {
     textPrimary: AppColors.textPrimaryDark,
     textSecondary: AppColors.textSecondaryDark,
   );
+
+  static TextTheme _textTheme({
+    required Color textPrimary,
+    required Color textSecondary,
+  }) {
+    return TextTheme(
+      // Judul di NewsDetailView.
+      titleLarge: GoogleFonts.poppins(
+        fontSize: 20,
+        fontWeight: FontWeight.w700,
+        height: 1.3,
+        color: textPrimary,
+      ),
+      // Judul artikel di NewsCard.
+      titleMedium: GoogleFonts.poppins(
+        fontSize: 17,
+        fontWeight: FontWeight.w600,
+        height: 1.3,
+        color: textPrimary,
+      ),
+      titleSmall: GoogleFonts.poppins(
+        fontSize: 15,
+        fontWeight: FontWeight.w600,
+        height: 1.3,
+        color: textPrimary,
+      ),
+      bodyLarge: GoogleFonts.inter(fontSize: 16, height: 1.5, color: textPrimary),
+      bodyMedium: GoogleFonts.inter(fontSize: 14, height: 1.6, color: textPrimary),
+      // Source name + waktu publish.
+      bodySmall: GoogleFonts.inter(
+        fontSize: 12,
+        fontWeight: FontWeight.w500,
+        color: textSecondary,
+      ),
+      labelLarge: GoogleFonts.inter(
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+        color: textPrimary,
+      ),
+    );
+  }
 
   static ThemeData _build({
     required Brightness brightness,
@@ -151,26 +142,17 @@ class AppTheme {
       cardTheme: CardThemeData(
         color: surface,
         elevation: 2,
-        shadowColor: Colors.black.withValues(alpha: 0.12),
+        shadowColor: AppColors.scrim.withValues(alpha: 0.12),
         margin: EdgeInsets.zero,
         clipBehavior: Clip.antiAlias,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.lg),
         ),
       ),
-      chipTheme: ChipThemeData(
-        backgroundColor: surface,
-        selectedColor: primary,
-        labelStyle: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.pill),
-          side: BorderSide(color: primary.withValues(alpha: 0.4)),
-        ),
-      ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: primary,
-          foregroundColor: Colors.white,
+          foregroundColor: AppColors.onImage,
           padding: const EdgeInsets.symmetric(vertical: 14),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.md),

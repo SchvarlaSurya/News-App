@@ -36,13 +36,14 @@ dependencies:
   cupertino_icons: ^1.0.8
 
   http: ^1.2.2
-  provider: ^6.1.2
   cached_network_image: ^3.4.1
   intl: ^0.19.0
   url_launcher: ^6.3.1
   shared_preferences: ^2.3.3
   shimmer: ^3.0.0
   google_fonts: ^6.2.1
+  get: ^4.7.3
+  flutter_dotenv: ^6.0.1
 
 dev_dependencies:
   flutter_test:
@@ -65,6 +66,10 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  # File .env dibaca flutter_dotenv saat runtime (lihat main.dart).
+  assets:
+    - .env
 
   # To add assets to your application, add an assets section, like this:
   # assets:

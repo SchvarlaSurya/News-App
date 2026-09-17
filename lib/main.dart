@@ -1,41 +1,45 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:get/get.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-import 'providers/bookmark_provider.dart';
-import 'providers/news_provider.dart';
-import 'providers/theme_provider.dart';
-import 'screens/home_screen.dart';
-import 'utils/app_theme.dart';
+import 'bindings/app_bindings.dart';
+import 'routes/app_pages.dart';
+import 'utils/app_colors.dart';
+import 'utils/constants.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Load environment variables
+  await dotenv.load(fileName: '.env');
+
   await initializeDateFormatting('id_ID');
-  runApp(const MyApp());
+
+  // Baca tema tersimpan sebelum runApp biar gak kedip light -> dark.
+  final prefs = await SharedPreferences.getInstance();
+  final isDark = prefs.getBool(StorageKeys.isDarkMode) ?? false;
+
+  runApp(MyApp(themeMode: isDark ? ThemeMode.dark : ThemeMode.light));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final ThemeMode themeMode;
+
+  const MyApp({super.key, this.themeMode = ThemeMode.light});
 
   @override
   Widget build(BuildContext context) {
-    return MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => NewsProvider()),
-        ChangeNotifierProvider(create: (_) => BookmarkProvider()..loadBookmarks()),
-        ChangeNotifierProvider(create: (_) => ThemeProvider()..loadTheme()),
-      ],
-      child: Consumer<ThemeProvider>(
-        builder: (context, themeProvider, _) {
-          return MaterialApp(
-            title: 'News App',
-            theme: AppTheme.light,
-            darkTheme: AppTheme.dark,
-            themeMode: themeProvider.themeMode,
-            home: const HomeScreen(),
-          );
-        },
-      ),
+    return GetMaterialApp(
+      title: Constants.appName,
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.light,
+      darkTheme: AppTheme.dark,
+      themeMode: themeMode,
+      initialBinding: AppBindings(),
+      initialRoute: AppPages.initial,
+      getPages: AppPages.routes,
     );
   }
 }
