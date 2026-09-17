@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
@@ -6,7 +7,6 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/news_article.dart';
 import '../utils/app_colors.dart';
 import '../utils/constants.dart';
-import '../widgets/news_card.dart';
 
 /// Detail artikel. Artikel dikirim lewat `Get.toNamed(..., arguments: article)`.
 class NewsDetailView extends StatelessWidget {
@@ -38,7 +38,7 @@ class NewsDetailView extends StatelessWidget {
 
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final publishedAt = NewsCard.parsePublishedAt(article.publishedAt);
+    final publishedAt = DateTime.tryParse(article.publishedAt ?? '')?.toLocal();
     final body = (article.content == null || article.content!.isEmpty)
         ? (article.description ?? 'Konten tidak tersedia.')
         // NewsAPI memotong content dengan akhiran "[+1234 chars]".
@@ -66,7 +66,21 @@ class NewsDetailView extends StatelessWidget {
               background: Stack(
                 fit: StackFit.expand,
                 children: [
-                  NewsImage(url: article.urlToImage, iconSize: 48),
+                  if (article.urlToImage != null)
+                    CachedNetworkImage(
+                      imageUrl: article.urlToImage!,
+                      fit: BoxFit.cover,
+                      errorWidget: (context, url, error) => Container(
+                        color: AppColors.divider,
+                        child: const Icon(
+                          Icons.image_not_supported,
+                          size: 48,
+                          color: AppColors.textHint,
+                        ),
+                      ),
+                    )
+                  else
+                    Container(color: AppColors.divider),
                   // Scrim biar tombol back tetap kebaca di atas gambar.
                   DecoratedBox(
                     decoration: BoxDecoration(

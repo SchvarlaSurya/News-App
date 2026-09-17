@@ -1,202 +1,125 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:timeago/timeago.dart' as timeago;
+import 'package:news_app/models/news_article.dart';
+import 'package:news_app/utils/app_colors.dart';
 
-import '../models/news_article.dart';
-import '../utils/app_colors.dart';
-import '../utils/constants.dart';
-
-/// Kartu berita reusable: gambar 16:9 + judul di atas gradient, source & waktu.
-/// Muncul dengan animasi fade + slide-up; [index] dipakai untuk efek stagger.
-class NewsCard extends StatefulWidget {
+class NewsCard extends StatelessWidget {
   final NewsArticle article;
-  final VoidCallback? onTap;
-  final int index;
+  final VoidCallback onTap;
 
-  const NewsCard({super.key, required this.article, this.onTap, this.index = 0});
-
-  /// Format waktu relatif ("2 jam lalu"); jatuh ke tanggal kalau lebih dari 7 hari.
-  /// [raw] berupa string ISO 8601 dari API (bisa null / tidak valid).
-  static String formatPublishedAt(String? raw) {
-    final publishedAt = parsePublishedAt(raw);
-    if (publishedAt == null) return '';
-
-    final diff = DateTime.now().difference(publishedAt);
-
-    if (diff.inSeconds < 60) return 'Baru saja';
-    if (diff.inMinutes < 60) return '${diff.inMinutes} menit lalu';
-    if (diff.inHours < 24) return '${diff.inHours} jam lalu';
-    if (diff.inDays < 7) return '${diff.inDays} hari lalu';
-    return DateFormat('d MMM yyyy').format(publishedAt);
-  }
-
-  /// Ubah string `publishedAt` dari API menjadi [DateTime] waktu lokal.
-  /// Return null kalau tidak bisa dipakai.
-  static DateTime? parsePublishedAt(String? raw) {
-    if (raw == null || raw.trim().isEmpty) return null;
-
-    // tryParse: format rusak -> null, bukan exception yang bikin UI crash.
-    final parsed = DateTime.tryParse(raw.trim())?.toLocal();
-    if (parsed == null) return null;
-
-    // Jam server bisa sedikit di depan jam HP; jangan tampilkan "-3 menit lalu".
-    final now = DateTime.now();
-    return parsed.isAfter(now) ? now : parsed;
-  }
-
-  @override
-  State<NewsCard> createState() => _NewsCardState();
-}
-
-class _NewsCardState extends State<NewsCard> with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 350),
-  );
-  late final Animation<double> _opacity = CurvedAnimation(
-    parent: _controller,
-    curve: Curves.easeOut,
-  );
-  late final Animation<Offset> _offset = Tween<Offset>(
-    begin: const Offset(0, 0.06),
-    end: Offset.zero,
-  ).animate(_opacity);
-
-  @override
-  void initState() {
-    super.initState();
-    final delay = Duration(milliseconds: 30 * widget.index.clamp(0, 8));
-    Future.delayed(delay, () {
-      if (mounted) _controller.forward();
-    });
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
+  const NewsCard({Key? key, required this.article, required this.onTap})
+    : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final article = widget.article;
+    return Card(
+      margin: EdgeInsets.only(bottom: 16),
+      elevation: 2,
+      shadowColor: AppColors.cardShadow,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Image
+            if (article.urlToImage != null)
+              ClipRRect(
+                borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+                child: CachedNetworkImage(
+                  imageUrl: article.urlToImage!,
+                  height: 200,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  placeholder: (context, url) => Container(
+                    height: 200,
+                    color: AppColors.divider,
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                  errorWidget: (context, url, error) => Container(
+                    height: 200,
+                    color: AppColors.divider,
+                    child: Center(
+                      child: Icon(
+                        Icons.image_not_supported,
+                        size: 40,
+                        color: AppColors.textHint,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
 
-    return FadeTransition(
-      opacity: _opacity,
-      child: SlideTransition(
-        position: _offset,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
-          child: Card(
-            child: InkWell(
-              onTap: widget.onTap,
+            Padding(
+              padding: EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  AspectRatio(
-                    aspectRatio: 16 / 9,
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        NewsImage(url: article.urlToImage),
-                        // Gradient tipis di bawah gambar biar judul tetap terbaca.
-                        Align(
-                          alignment: Alignment.bottomCenter,
-                          child: Container(
-                            height: 72,
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: [
-                                  AppColors.scrim.withValues(alpha: 0),
-                                  AppColors.scrim.withValues(alpha: 0.75),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          left: AppSpacing.md,
-                          right: AppSpacing.md,
-                          bottom: AppSpacing.sm,
-                          child: Text(
-                            article.title ?? 'Tanpa judul',
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.titleMedium?.copyWith(color: AppColors.onImage),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(AppSpacing.md),
-                    child: Row(
-                      children: [
+                  // Source and Date
+                  Row(
+                    children: [
+                      if (article.source?.name != null) ...[
                         Expanded(
                           child: Text(
-                            article.source?.name ?? 'Tidak diketahui',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: colorScheme.primary,
-                              fontWeight: FontWeight.w700,
+                            article.source!.name!,
+                            style: TextStyle(
+                              color: AppColors.primary,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
                             ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        const SizedBox(width: AppSpacing.sm),
-                        Text(
-                          NewsCard.formatPublishedAt(article.publishedAt),
-                          style: theme.textTheme.bodySmall,
-                        ),
+                        SizedBox(width: 8),
                       ],
-                    ),
+                      if (article.publishedAt != null)
+                        Text(
+                          timeago.format(DateTime.parse(article.publishedAt!)),
+                          style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 12,
+                          ),
+                        ),
+                    ],
                   ),
+                  SizedBox(height: 12),
+
+                  // Title
+                  if (article.title != null)
+                    Text(
+                      article.title!,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                        height: 1.3,
+                      ),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+
+                  SizedBox(height: 8),
+
+                  // Description
+                  if (article.description != null)
+                    Text(
+                      article.description!,
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 14,
+                        height: 1.4,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                 ],
               ),
             ),
-          ),
+          ],
         ),
       ),
-    );
-  }
-}
-
-/// Gambar artikel dengan placeholder & fallback kalau URL kosong/gagal dimuat.
-class NewsImage extends StatelessWidget {
-  final String? url;
-  final double iconSize;
-
-  const NewsImage({super.key, this.url, this.iconSize = 24});
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    Widget fallback(IconData icon) => Container(
-          color: colorScheme.surfaceContainerHighest,
-          child: Icon(icon, size: iconSize, color: colorScheme.onSurfaceVariant),
-        );
-
-    if (url == null || url!.isEmpty) return fallback(Icons.image_outlined);
-
-    return CachedNetworkImage(
-      imageUrl: url!,
-      fit: BoxFit.cover,
-      placeholder: (context, _) => Container(
-        color: colorScheme.surfaceContainerHighest,
-        child: const Center(
-          child: SizedBox(
-            width: 24,
-            height: 24,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-        ),
-      ),
-      errorWidget: (context, _, _) => fallback(Icons.image_not_supported_outlined),
     );
   }
 }

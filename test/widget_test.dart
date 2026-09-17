@@ -2,7 +2,6 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:news_app/models/news_article.dart';
 import 'package:news_app/models/news_response.dart';
-import 'package:news_app/widgets/news_card.dart';
 
 void main() {
   test('NewsResponse parses articles and tolerates null fields', () {
@@ -31,19 +30,6 @@ void main() {
 
     expect(response.articles, isEmpty);
     expect(response.totalResults, isNull);
-  });
-
-  test('parsePublishedAt handles valid, empty, broken and future dates', () {
-    final parsed = NewsCard.parsePublishedAt('2020-01-15T08:00:00Z');
-    expect(parsed, DateTime.utc(2020, 1, 15, 8).toLocal());
-    expect(parsed!.isUtc, isFalse);
-
-    expect(NewsCard.parsePublishedAt(null), isNull);
-    expect(NewsCard.parsePublishedAt(''), isNull);
-    expect(NewsCard.parsePublishedAt('bukan tanggal'), isNull);
-
-    final future = DateTime.now().add(const Duration(hours: 1)).toUtc().toIso8601String();
-    expect(NewsCard.parsePublishedAt(future)!.isAfter(DateTime.now()), isFalse);
   });
 
   test('NewsArticle parses source when present', () {

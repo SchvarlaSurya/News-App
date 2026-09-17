@@ -1,20 +1,17 @@
 import 'package:flutter/material.dart';
 
-/// Palet warna terpusat. Jangan hardcode Color(...) di widget lain —
-/// tambahkan token baru di sini kalau perlu.
 class AppColors {
-  AppColors._();
+  static const Color primary = Color(0xFF3D5AFE);
+  static const Color background = Color(0xFFF6F7FB);
 
-  static const primary = Color(0xFF3D5AFE);
-  static const background = Color(0xFFF6F7FB);
+  static const Color textPrimary = Color(0xFF1A1B23);
+  static const Color textSecondary = Color(0xFF6B7280);
+  static const Color textHint = Color(0xFF9CA3AF);
 
-  // Overlay di atas gambar (teks/tombol putih, scrim gradient gelap).
-  static const onImage = Colors.white;
-  static const scrim = Colors.black;
+  static const Color divider = Color(0xFFE5E7EB);
+  static const Color cardShadow = Color(0x1F000000);
 
-  // Shimmer
-  static final shimmerBaseLight = Colors.grey.shade300;
-  static final shimmerHighlightLight = Colors.grey.shade100;
-  static final shimmerBaseDark = Colors.grey.shade700;
-  static final shimmerHighlightDark = Colors.grey.shade600;
+  // Overlay di atas gambar (dipakai NewsDetailView).
+  static const Color onImage = Colors.white;
+  static const Color scrim = Colors.black;
 }

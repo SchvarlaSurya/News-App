@@ -35,18 +35,17 @@ class HomeView extends GetView<NewsController> {
 
   Widget _buildCategoryBar() {
     return SizedBox(
-      height: 48,
+      height: 56,
       child: Obx(
-        () => ListView.separated(
+        () => ListView.builder(
           scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
           itemCount: controller.categories.length,
-          separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.sm),
           itemBuilder: (context, index) {
             final category = controller.categories[index];
             return CategoryChip(
               label: category.capitalizeFirst!,
-              selected: controller.selectedCategory == category,
+              isSelected: controller.selectedCategory == category,
               onTap: () => controller.selectCategory(category),
             );
           },
@@ -57,7 +56,7 @@ class HomeView extends GetView<NewsController> {
 
   Widget _buildBody() {
     if (controller.isLoading) {
-      return const LoadingShimmer();
+      return LoadingShimmer();
     }
 
     final articles = controller.articles;
@@ -76,13 +75,12 @@ class HomeView extends GetView<NewsController> {
       onRefresh: controller.refreshNews,
       child: ListView.builder(
         physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(AppSpacing.lg),
         itemCount: articles.length,
         itemBuilder: (context, index) {
           final article = articles[index];
           return NewsCard(
-            key: ValueKey('${article.url}-$index'),
             article: article,
-            index: index,
             onTap: () => Get.toNamed(Routes.NEWS_DETAIL, arguments: article),
           );
         },
