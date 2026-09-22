@@ -1,79 +1,138 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
+
 import 'package:http/http.dart' as http;
 import 'package:news_app/models/news_response.dart';
 import 'package:news_app/utils/constants.dart';
 
-class NewsService {
-  static const String _baseUrl = Constants.baseUrl;
-  static final String _apiKey = Constants.apiKey;
+/// Error dari NewsService. [message] sudah siap ditampilkan ke pengguna,
+/// [isPagingLimit] menandai batas 100 hasil pada paket gratis NewsAPI.
+class NewsServiceException implements Exception {
+  final String message;
+  final bool isPagingLimit;
 
+  NewsServiceException(this.message, {this.isPagingLimit = false});
+
+  @override
+  String toString() => message;
+}
+
+class NewsService {
+  final http.Client _client;
+
+  NewsService({http.Client? client}) : _client = client ?? http.Client();
+
+  /// Berita utama berdasarkan negara & kategori.
   Future<NewsResponse> getTopHeadlines({
     String country = Constants.defaultCountry,
     String? category,
     int page = 1,
-    int pageSize = 20,
-  }) async {
-    try {
-      final Map<String, String> queryParams = {
-        'apiKey': _apiKey,
-        'country': country,
-        'page': page.toString(),
-        'pageSize': pageSize.toString(),
-      };
-
-      if (category != null && category.isNotEmpty) {
-        queryParams['category'] = category;
-      }
-
-      final uri = Uri.parse(
-        '$_baseUrl${Constants.topHeadlines}',
-      ).replace(queryParameters: queryParams);
-
-      final response = await http.get(uri);
-
-      if (response.statusCode == 200) {
-        final jsonData = json.decode(response.body);
-        return NewsResponse.fromJson(jsonData);
-      } else {
-        throw Exception('Failed to load news: ${response.statusCode}');
-      }
-    } catch (e) {
-      throw Exception('Network error: $e');
-    }
+    int pageSize = Constants.pageSize,
+  }) {
+    return _get(Constants.topHeadlines, {
+      'country': country,
+      if (category != null && category.isNotEmpty) 'category': category,
+      'page': '$page',
+      'pageSize': '$pageSize',
+    });
   }
 
+  /// Pencarian bebas lewat endpoint /everything.
   Future<NewsResponse> searchNews({
     required String query,
     int page = 1,
-    int pageSize = 20,
-    String? sortBy,
-  }) async {
+    int pageSize = Constants.pageSize,
+    String sortBy = 'publishedAt',
+  }) {
+    return _get(Constants.everything, {
+      'q': query.trim(),
+      'sortBy': sortBy,
+      'language': 'en',
+      'page': '$page',
+      'pageSize': '$pageSize',
+    });
+  }
+
+  Future<NewsResponse> _get(
+    String endpoint,
+    Map<String, String> queryParams,
+  ) async {
+    if (Constants.apiKey.isEmpty) {
+      throw NewsServiceException(
+        'API key belum diatur. Isi API_KEY di file .env, lalu jalankan ulang aplikasi.',
+      );
+    }
+
+    final uri = Uri.parse(
+      '${Constants.baseUrl}$endpoint',
+    ).replace(queryParameters: {...queryParams, 'apiKey': Constants.apiKey});
+
+    final http.Response response;
     try {
-      final Map<String, String> queryParams = {
-        'apiKey': _apiKey,
-        'q': query,
-        'page': page.toString(),
-        'pageSize': pageSize.toString(),
-      };
+      response = await _client.get(uri).timeout(Constants.requestTimeout);
+    } on TimeoutException {
+      throw NewsServiceException(
+        'Server tidak merespons. Coba lagi sebentar lagi.',
+      );
+    } on SocketException {
+      throw NewsServiceException(
+        'Tidak ada koneksi internet. Nyalakan data atau Wi-Fi, lalu coba lagi.',
+      );
+    } on http.ClientException {
+      throw NewsServiceException(
+        'Gagal terhubung ke server berita. Periksa koneksi internet Anda.',
+      );
+    }
 
-      if (sortBy != null && sortBy.isNotEmpty) {
-        queryParams['sortBy'] = sortBy;
-      }
+    final Map<String, dynamic> data;
+    try {
+      data = json.decode(response.body) as Map<String, dynamic>;
+    } catch (_) {
+      throw NewsServiceException('Data dari server tidak bisa dibaca.');
+    }
 
-      final uri = Uri.parse(
-        '$_baseUrl${Constants.everything}',
-      ).replace(queryParameters: queryParams);
+    if (response.statusCode != 200 || data['status'] != 'ok') {
+      throw _errorFor(response.statusCode, data);
+    }
 
-      final response = await http.get(uri);
+    final result = NewsResponse.fromJson(data);
+    return NewsResponse(
+      status: result.status,
+      totalResults: result.totalResults,
+      articles: result.articles.where((a) => a.isUsable).toList(),
+    );
+  }
 
-      if (response.statusCode == 200) {
-        final jsonData = json.decode(response.body);
-        return NewsResponse.fromJson(jsonData);
-      } else {
-        throw Exception('Failed to search news: ${response.statusCode}');
-      }
-    } catch (e) {
-      throw Exception('Network error: $e');
+  NewsServiceException _errorFor(int statusCode, Map<String, dynamic> data) {
+    final code = data['code'];
+    switch (statusCode) {
+      case 401:
+        return NewsServiceException(
+          'API key ditolak server. Periksa API_KEY di file .env.',
+        );
+      case 429:
+        return NewsServiceException(
+          'Kuota permintaan hari ini habis. Coba lagi besok.',
+        );
+      case 426:
+        return NewsServiceException(
+          'Sudah sampai batas ${Constants.maxResults} berita untuk paket gratis NewsAPI.',
+          isPagingLimit: true,
+        );
+      default:
+        if (code == 'maximumResultsReached') {
+          return NewsServiceException(
+            'Sudah sampai batas ${Constants.maxResults} berita untuk paket gratis NewsAPI.',
+            isPagingLimit: true,
+          );
+        }
+        return NewsServiceException(
+          data['message']?.toString() ??
+              'Berita gagal dimuat (kode $statusCode).',
+        );
     }
   }
+
+  void dispose() => _client.close();
 }

@@ -1,162 +1,77 @@
 import 'package:flutter/material.dart';
-import 'package:news_app/utils/app_colors.dart';
+import 'package:news_app/utils/constants.dart';
+import 'package:shimmer/shimmer.dart';
 
-class LoadingShimmer extends StatefulWidget {
-  @override
-  _LoadingShimmerState createState() => _LoadingShimmerState();
-}
+/// Kerangka daftar berita saat data pertama dimuat. Bentuknya meniru
+/// lead story + baris berita supaya pergantian ke data asli tidak melompat.
+class LoadingShimmer extends StatelessWidget {
+  final int itemCount;
 
-class _LoadingShimmerState extends State<LoadingShimmer>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _animationController;
-  late Animation<double> _animation;
-
-  @override
-  void initState() {
-    super.initState();
-    _animationController = AnimationController(
-      duration: Duration(milliseconds: 1500),
-      vsync: this,
-    )..repeat();
-
-    _animation = Tween<double>(begin: -1.0, end: 2.0).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
-    );
-  }
-
-  @override
-  void dispose() {
-    _animationController.dispose();
-    super.dispose();
-  }
+  const LoadingShimmer({super.key, this.itemCount = 4});
 
   @override
   Widget build(BuildContext context) {
-    return ListView.builder(
-      padding: EdgeInsets.all(16),
-      itemCount: 5,
-      itemBuilder: (context, index) {
-        return Card(
-          margin: EdgeInsets.only(bottom: 16),
-          elevation: 2,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Image shimmer
-              AnimatedBuilder(
-                animation: _animation,
-                builder: (context, child) {
-                  return Container(
-                    height: 200,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.vertical(
-                        top: Radius.circular(12),
-                      ),
-                      gradient: LinearGradient(
-                        begin: Alignment.centerLeft,
-                        end: Alignment.centerRight,
-                        colors: [
-                          AppColors.divider,
-                          AppColors.divider.withOpacity(0.5),
-                          AppColors.divider,
-                        ],
-                        stops: [0.0, 0.5, 1.0],
-                        transform: GradientRotation(_animation.value * 3.14159),
-                      ),
-                    ),
-                  );
-                },
-              ),
+    final colorScheme = Theme.of(context).colorScheme;
 
-              Padding(
-                padding: EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Source shimmer
-                    AnimatedBuilder(
-                      animation: _animation,
-                      builder: (context, child) {
-                        return Container(
-                          height: 12,
-                          width: 100,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(6),
-                            color: AppColors.divider,
-                          ),
-                        );
-                      },
-                    ),
-                    SizedBox(height: 12),
-
-                    // Title shimmer
-                    AnimatedBuilder(
-                      animation: _animation,
-                      builder: (context, child) {
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              height: 16,
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(8),
-                                color: AppColors.divider,
-                              ),
-                            ),
-                            SizedBox(height: 8),
-                            Container(
-                              height: 16,
-                              width: MediaQuery.of(context).size.width * 0.7,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(8),
-                                color: AppColors.divider,
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                    SizedBox(height: 12),
-
-                    // Description shimmer
-                    AnimatedBuilder(
-                      animation: _animation,
-                      builder: (context, child) {
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              height: 14,
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(7),
-                                color: AppColors.divider,
-                              ),
-                            ),
-                            SizedBox(height: 6),
-                            Container(
-                              height: 14,
-                              width: MediaQuery.of(context).size.width * 0.5,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(7),
-                                color: AppColors.divider,
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                  ],
+    return Shimmer.fromColors(
+      baseColor: colorScheme.outlineVariant,
+      highlightColor: colorScheme.surface,
+      child: ListView(
+        physics: const NeverScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        children: [
+          const _Block(height: 220, radius: AppRadius.md),
+          const SizedBox(height: AppSpacing.lg),
+          const _Block(height: 12, width: 120),
+          const SizedBox(height: AppSpacing.md),
+          const _Block(height: 22),
+          const SizedBox(height: AppSpacing.sm),
+          const _Block(height: 22, width: 220),
+          const SizedBox(height: AppSpacing.xl),
+          for (var i = 0; i < itemCount; i++) ...[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _Block(height: 12, width: 100),
+                      SizedBox(height: AppSpacing.md),
+                      _Block(height: 16),
+                      SizedBox(height: AppSpacing.sm),
+                      _Block(height: 16, width: 160),
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ),
-        );
-      },
+                const SizedBox(width: AppSpacing.lg),
+                const _Block(height: 96, width: 96, radius: AppRadius.sm),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.xl),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _Block extends StatelessWidget {
+  final double height;
+  final double? width;
+  final double radius;
+
+  const _Block({required this.height, this.width, this.radius = 4});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: height,
+      width: width ?? double.infinity,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.outlineVariant,
+        borderRadius: BorderRadius.circular(radius),
+      ),
     );
   }
 }

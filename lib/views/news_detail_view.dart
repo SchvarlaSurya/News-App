@@ -1,205 +1,155 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:share_plus/share_plus.dart';
-import 'package:timeago/timeago.dart' as timeago;
-import 'package:url_launcher/url_launcher.dart';
+import 'package:intl/intl.dart';
 import 'package:news_app/models/news_article.dart';
 import 'package:news_app/utils/app_colors.dart';
+import 'package:news_app/utils/constants.dart';
+import 'package:news_app/widgets/news_card.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+/// Halaman baca. Artikel dikirim lewat Get.arguments dari daftar berita.
 class NewsDetailView extends StatelessWidget {
-  final NewsArticle article = Get.arguments as NewsArticle;
+  const NewsDetailView({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final article = Get.arguments;
+    if (article is! NewsArticle) {
+      return Scaffold(
+        appBar: AppBar(),
+        body: const Center(child: Text('Artikel tidak ditemukan.')),
+      );
+    }
+
+    final theme = Theme.of(context);
+    final published = article.publishedDate;
+    final body = article.readableContent;
+
     return Scaffold(
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
-            expandedHeight: 300,
             pinned: true,
-            flexibleSpace: FlexibleSpaceBar(
-              background: article.urlToImage != null
-                  ? CachedNetworkImage(
-                      imageUrl: article.urlToImage!,
-                      fit: BoxFit.cover,
-                      placeholder: (context, url) => Container(
-                        color: AppColors.divider,
-                        child: Center(child: CircularProgressIndicator()),
-                      ),
-                      errorWidget: (context, url, error) => Container(
-                        color: AppColors.divider,
-                        child: Icon(
-                          Icons.image_not_supported,
-                          size: 50,
-                          color: AppColors.textHint,
-                        ),
-                      ),
-                    )
-                  : Container(
-                      color: AppColors.divider,
-                      child: Icon(
-                        Icons.newspaper,
-                        size: 50,
-                        color: AppColors.textHint,
-                      ),
-                    ),
-            ),
+            expandedHeight: article.hasImage ? 280 : 0,
+            backgroundColor: theme.scaffoldBackgroundColor,
             actions: [
+              BookmarkButton(article: article, onImage: article.hasImage),
               IconButton(
-                icon: Icon(Icons.share),
-                onPressed: () => _shareArticle(),
+                tooltip: 'Bagikan',
+                onPressed: () => _share(article),
+                icon: const Icon(Icons.ios_share),
+                style: article.hasImage ? _overlayStyle : null,
               ),
               PopupMenuButton<String>(
-                onSelected: (value) {
-                  switch (value) {
-                    case 'copy_link':
-                      _copyLink();
-                      break;
-                    case 'open_browser':
-                      _openInBrowser();
-                      break;
-                  }
-                },
-                itemBuilder: (context) => [
+                tooltip: 'Aksi lainnya',
+                onSelected: (value) => value == 'copy'
+                    ? _copyLink(article)
+                    : _openInBrowser(article),
+                itemBuilder: (context) => const [
+                  PopupMenuItem(value: 'copy', child: Text('Salin tautan')),
                   PopupMenuItem(
-                    value: 'copy_link',
-                    child: Row(
-                      children: [
-                        Icon(Icons.copy),
-                        SizedBox(width: 8),
-                        Text('Copy Link'),
-                      ],
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: 'open_browser',
-                    child: Row(
-                      children: [
-                        Icon(Icons.open_in_browser),
-                        SizedBox(width: 8),
-                        Text('Open in Browser'),
-                      ],
-                    ),
+                    value: 'browser',
+                    child: Text('Buka di browser'),
                   ),
                 ],
               ),
             ],
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Source and Date
-                  Row(
-                    children: [
-                      if (article.source?.name != null) ...[
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
+            flexibleSpace: article.hasImage
+                ? FlexibleSpaceBar(
+                    background: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        ArticleImage(article: article),
+                        // Gelapkan bagian atas supaya ikon tetap terbaca.
+                        DecoratedBox(
                           decoration: BoxDecoration(
-                            color: AppColors.primary.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            article.source!.name!,
-                            style: TextStyle(
-                              color: AppColors.primary,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                AppColors.scrim.withValues(alpha: 0.5),
+                                AppColors.scrim.withValues(alpha: 0),
+                              ],
+                              stops: const [0, 0.5],
                             ),
                           ),
                         ),
-                        SizedBox(width: 12),
                       ],
-                      if (article.publishedAt != null) ...[
-                        Text(
-                          timeago.format(DateTime.parse(article.publishedAt!)),
-                          style: TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 12,
+                    ),
+                  )
+                : null,
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg,
+                AppSpacing.xl,
+                AppSpacing.lg,
+                AppSpacing.xxl,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    article.title ?? '',
+                    style: theme.textTheme.headlineMedium,
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          article.author?.isNotEmpty == true
+                              ? '${article.sourceName} · ${article.author}'
+                              : article.sourceName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.labelLarge?.copyWith(
+                            color: theme.colorScheme.primary,
                           ),
                         ),
-                      ],
+                      ),
+                      if (published != null)
+                        Text(
+                          DateFormat(
+                            'd MMMM yyyy, HH:mm',
+                            'id_ID',
+                          ).format(published),
+                          style: theme.textTheme.labelMedium,
+                        ),
                     ],
                   ),
-                  SizedBox(height: 16),
-
-                  // Title
-                  if (article.title != null) ...[
-                    Text(
-                      article.title!,
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
-                        height: 1.3,
-                      ),
-                    ),
-                    SizedBox(height: 16),
-                  ],
-
-                  // Description
-                  if (article.description != null) ...[
+                  const SizedBox(height: AppSpacing.lg),
+                  Divider(color: theme.colorScheme.outlineVariant),
+                  const SizedBox(height: AppSpacing.lg),
+                  if (article.description != null &&
+                      article.description!.isNotEmpty) ...[
                     Text(
                       article.description!,
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: AppColors.textSecondary,
-                        height: 1.5,
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                    SizedBox(height: 20),
+                    const SizedBox(height: AppSpacing.lg),
                   ],
-
-                  // Content
-                  if (article.content != null) ...[
-                    Text(
-                      'Content',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
-                      ),
+                  if (body != null && body != article.description)
+                    Text(body, style: theme.textTheme.bodyLarge),
+                  const SizedBox(height: AppSpacing.lg),
+                  Text(
+                    'NewsAPI hanya mengirim cuplikan artikel. Buka sumbernya untuk membaca lengkap.',
+                    style: theme.textTheme.labelMedium,
+                  ),
+                  const SizedBox(height: AppSpacing.xl),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: () => _openInBrowser(article),
+                      icon: const Icon(Icons.open_in_new, size: 18),
+                      label: Text('Baca di ${article.sourceName}'),
                     ),
-                    SizedBox(height: 8),
-                    Text(
-                      article.content!,
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: AppColors.textPrimary,
-                        height: 1.6,
-                      ),
-                    ),
-                    SizedBox(height: 24),
-                  ],
-
-                  // Read More Button
-                  if (article.url != null) ...[
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: _openInBrowser,
-                        style: ElevatedButton.styleFrom(
-                          padding: EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        child: Text(
-                          'Read Full Article',
-                          style: TextStyle(fontSize: 16),
-                        ),
-                      ),
-                    ),
-                  ],
-
-                  SizedBox(height: 32),
+                  ),
                 ],
               ),
             ),
@@ -209,39 +159,47 @@ class NewsDetailView extends StatelessWidget {
     );
   }
 
-  void _shareArticle() {
-    if (article.url != null) {
-      Share.share(
-        '${article.title ?? 'Check out this news'}\n\n${article.url!}',
+  ButtonStyle get _overlayStyle => IconButton.styleFrom(
+    backgroundColor: AppColors.scrim.withValues(alpha: 0.45),
+    foregroundColor: AppColors.onAccent,
+  );
+
+  void _share(NewsArticle article) {
+    if (article.url == null) return;
+    SharePlus.instance.share(
+      ShareParams(
+        text: '${article.title ?? 'Berita menarik'}\n\n${article.url}',
         subject: article.title,
-      );
-    }
+      ),
+    );
   }
 
-  void _copyLink() {
-    if (article.url != null) {
-      Clipboard.setData(ClipboardData(text: article.url!));
-      Get.snackbar(
-        'Success',
-        'Link copied to clipboard',
+  Future<void> _copyLink(NewsArticle article) async {
+    if (article.url == null) return;
+    await Clipboard.setData(ClipboardData(text: article.url!));
+    Get.rawSnackbar(
+      message: 'Tautan disalin',
+      snackPosition: SnackPosition.BOTTOM,
+      duration: const Duration(seconds: 2),
+      margin: const EdgeInsets.all(AppSpacing.lg),
+      borderRadius: AppRadius.sm,
+    );
+  }
+
+  Future<void> _openInBrowser(NewsArticle article) async {
+    final url = Uri.tryParse(article.url ?? '');
+    if (url == null) return;
+
+    // launchUrl langsung, tanpa canLaunchUrl: di Android 11+ pengecekan itu
+    // butuh deklarasi <queries> dan sering menjawab false padahal bisa dibuka.
+    final opened = await launchUrl(url, mode: LaunchMode.externalApplication);
+    if (!opened) {
+      Get.rawSnackbar(
+        message: 'Tidak ada aplikasi yang bisa membuka tautan ini',
         snackPosition: SnackPosition.BOTTOM,
-        duration: Duration(seconds: 2),
+        margin: const EdgeInsets.all(AppSpacing.lg),
+        borderRadius: AppRadius.sm,
       );
-    }
-  }
-
-  void _openInBrowser() async {
-    if (article.url != null) {
-      final Uri url = Uri.parse(article.url!);
-      if (await canLaunchUrl(url)) {
-        await launchUrl(url, mode: LaunchMode.externalApplication);
-      } else {
-        Get.snackbar(
-          'Error',
-          'Could not open the link',
-          snackPosition: SnackPosition.BOTTOM,
-        );
-      }
     }
   }
 }
