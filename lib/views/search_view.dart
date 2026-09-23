@@ -40,8 +40,10 @@ class _SearchViewState extends State<SearchView> {
     controller.search(query);
   }
 
-  void _openDetail(NewsArticle article) =>
-      Get.toNamed(Routes.NEWS_DETAIL, arguments: article);
+  void _openDetail(NewsArticle article) {
+    controller.markAsRead(article);
+    Get.toNamed(Routes.NEWS_DETAIL, arguments: article);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +54,6 @@ class _SearchViewState extends State<SearchView> {
           padding: const EdgeInsets.only(right: AppSpacing.lg),
           child: TextField(
             controller: _field,
-            autofocus: true,
             textInputAction: TextInputAction.search,
             onChanged: controller.onSearchChanged,
             onSubmitted: controller.search,

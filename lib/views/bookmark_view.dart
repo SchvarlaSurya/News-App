@@ -12,13 +12,18 @@ import 'package:news_app/widgets/news_card.dart';
 class BookmarkView extends GetView<NewsController> {
   const BookmarkView({super.key});
 
-  void _openDetail(NewsArticle article) =>
-      Get.toNamed(Routes.NEWS_DETAIL, arguments: article);
+  void _openDetail(NewsArticle article) {
+    controller.markAsRead(article);
+    Get.toNamed(Routes.NEWS_DETAIL, arguments: article);
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Bacaan tersimpan')),
+      appBar: AppBar(
+        title: const Text('Bacaan tersimpan'),
+        automaticallyImplyLeading: false,
+      ),
       body: Obx(() {
         if (controller.bookmarks.isEmpty) {
           return const EmptyStateView(

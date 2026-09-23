@@ -8,47 +8,81 @@ import 'package:news_app/views/state_views.dart';
 import 'package:news_app/widgets/category_chip.dart';
 import 'package:news_app/widgets/loading_shimmer.dart';
 import 'package:news_app/widgets/news_card.dart';
+import 'package:timeago/timeago.dart' as timeago;
 
 /// Beranda: satu berita utama, lalu daftar berita per kategori.
 class HomeView extends GetView<NewsController> {
   const HomeView({super.key});
 
-  void _openDetail(NewsArticle article) =>
-      Get.toNamed(Routes.NEWS_DETAIL, arguments: article);
+  void _openDetail(NewsArticle article) {
+    controller.markAsRead(article);
+    Get.toNamed(Routes.NEWS_DETAIL, arguments: article);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            _Masthead(),
-            SizedBox(
-              height: 44,
-              child: Obx(
-                () => ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.sm,
+      body: NestedScrollView(
+        // Kepala halaman ikut tergulung saat membaca, lalu muncul lagi
+        // begitu jari digeser ke bawah.
+        headerSliverBuilder: (context, innerScrolled) => [
+          SliverAppBar(
+            floating: true,
+            snap: true,
+            toolbarHeight: 64,
+            titleSpacing: AppSpacing.lg,
+            title: const _Masthead(),
+            actions: [
+              Obx(
+                () => IconButton(
+                  tooltip: controller.isDarkMode.value
+                      ? 'Pakai tema terang'
+                      : 'Pakai tema gelap',
+                  onPressed: controller.toggleTheme,
+                  icon: Icon(
+                    controller.isDarkMode.value
+                        ? Icons.light_mode_outlined
+                        : Icons.dark_mode_outlined,
                   ),
-                  itemCount: Constants.categories.length,
-                  itemBuilder: (context, index) {
-                    final category = Constants.categories[index];
-                    return CategoryChip(
-                      label: Constants.labelOf(category),
-                      isSelected: controller.selectedCategory.value == category,
-                      onTap: () => controller.selectCategory(category),
-                    );
-                  },
                 ),
               ),
+              const SizedBox(width: AppSpacing.sm),
+            ],
+            bottom: PreferredSize(
+              preferredSize: const Size.fromHeight(45),
+              child: Column(
+                children: [
+                  SizedBox(
+                    height: 44,
+                    child: Obx(
+                      () => ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.sm,
+                        ),
+                        itemCount: Constants.categories.length,
+                        itemBuilder: (context, index) {
+                          final category = Constants.categories[index];
+                          return CategoryChip(
+                            label: Constants.labelOf(category),
+                            isSelected:
+                                controller.selectedCategory.value == category,
+                            onTap: () => controller.selectCategory(category),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                  Divider(
+                    height: 1,
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                  ),
+                ],
+              ),
             ),
-            Divider(height: 1, color: theme.colorScheme.outlineVariant),
-            Expanded(child: Obx(_buildBody)),
-          ],
-        ),
+          ),
+        ],
+        body: Obx(_buildBody),
       ),
     );
   }
@@ -107,9 +141,18 @@ class HomeView extends GetView<NewsController> {
 
             final article = controller.articles[index];
             if (index == 0) {
-              return FeaturedNewsCard(
-                article: article,
-                onTap: () => _openDetail(article),
+              return Column(
+                children: [
+                  if (controller.isShowingCache.value)
+                    OfflineBanner(
+                      lastUpdated: controller.lastUpdated.value,
+                      onRetry: controller.refreshHeadlines,
+                    ),
+                  FeaturedNewsCard(
+                    article: article,
+                    onTap: () => _openDetail(article),
+                  ),
+                ],
               );
             }
             return NewsListItem(
@@ -123,61 +166,33 @@ class HomeView extends GetView<NewsController> {
   }
 }
 
-/// Kepala halaman: nama aplikasi, tanggal hari ini, dan aksi utama.
+/// Nama aplikasi + waktu pembaruan terakhir.
 class _Masthead extends StatelessWidget {
+  const _Masthead();
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final controller = Get.find<NewsController>();
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.lg,
-        AppSpacing.md,
-        AppSpacing.sm,
-        AppSpacing.sm,
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  Constants.appName,
-                  style: theme.textTheme.headlineMedium?.copyWith(
-                    letterSpacing: -0.5,
-                  ),
-                ),
-                Text(Constants.appTagline, style: theme.textTheme.labelMedium),
-              ],
-            ),
-          ),
-          IconButton(
-            tooltip: 'Cari berita',
-            onPressed: () => Get.toNamed(Routes.SEARCH),
-            icon: const Icon(Icons.search),
-          ),
-          IconButton(
-            tooltip: 'Bacaan tersimpan',
-            onPressed: () => Get.toNamed(Routes.BOOKMARKS),
-            icon: const Icon(Icons.bookmarks_outlined),
-          ),
-          Obx(
-            () => IconButton(
-              tooltip: controller.isDarkMode.value
-                  ? 'Pakai tema terang'
-                  : 'Pakai tema gelap',
-              onPressed: controller.toggleTheme,
-              icon: Icon(
-                controller.isDarkMode.value
-                    ? Icons.light_mode_outlined
-                    : Icons.dark_mode_outlined,
-              ),
-            ),
-          ),
-        ],
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          Constants.appName,
+          style: theme.textTheme.headlineMedium?.copyWith(letterSpacing: -0.5),
+        ),
+        Obx(() {
+          final updated = controller.lastUpdated.value;
+          return Text(
+            updated == null
+                ? Constants.appTagline
+                : 'Diperbarui ${timeago.format(updated, locale: 'id')}',
+            style: theme.textTheme.labelMedium,
+          );
+        }),
+      ],
     );
   }
 }

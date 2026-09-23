@@ -39,7 +39,7 @@ class FeaturedNewsCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(AppRadius.md),
               child: AspectRatio(
                 aspectRatio: 3 / 2,
-                child: ArticleImage(article: article),
+                child: ArticleImage(article: article, heroTag: article.url),
               ),
             ),
             const SizedBox(height: AppSpacing.lg),
@@ -79,6 +79,7 @@ class NewsListItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final controller = Get.find<NewsController>();
 
     return InkWell(
       onTap: onTap,
@@ -96,11 +97,19 @@ class NewsListItem extends StatelessWidget {
                 children: [
                   ArticleMeta(article: article),
                   const SizedBox(height: AppSpacing.sm),
-                  Text(
-                    article.title ?? '',
-                    style: theme.textTheme.titleMedium,
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
+                  // Judul yang sudah pernah dibuka ditampilkan lebih redup,
+                  // jadi mata langsung tertuju ke yang belum dibaca.
+                  Obx(
+                    () => Text(
+                      article.title ?? '',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: controller.isRead(article)
+                            ? theme.colorScheme.onSurfaceVariant
+                            : null,
+                      ),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ],
               ),
@@ -162,7 +171,10 @@ class ArticleMeta extends StatelessWidget {
 class ArticleImage extends StatelessWidget {
   final NewsArticle article;
 
-  const ArticleImage({super.key, required this.article});
+  /// Diisi supaya gambar berpindah mulus dari daftar ke halaman baca.
+  final String? heroTag;
+
+  const ArticleImage({super.key, required this.article, this.heroTag});
 
   @override
   Widget build(BuildContext context) {
@@ -175,7 +187,7 @@ class ArticleImage extends StatelessWidget {
 
     if (!article.hasImage) return placeholder();
 
-    return CachedNetworkImage(
+    final image = CachedNetworkImage(
       imageUrl: article.urlToImage!,
       fit: BoxFit.cover,
       fadeInDuration: const Duration(milliseconds: 200),
@@ -183,6 +195,9 @@ class ArticleImage extends StatelessWidget {
       errorWidget: (context, url, error) =>
           placeholder(Icons.image_not_supported_outlined),
     );
+
+    if (heroTag == null) return image;
+    return Hero(tag: heroTag!, child: image);
   }
 }
 

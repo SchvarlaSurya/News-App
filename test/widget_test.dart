@@ -10,8 +10,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 /// NewsService palsu supaya test tidak memanggil jaringan sungguhan.
 class FakeNewsService extends NewsService {
-  final List<NewsArticle> result;
-  final NewsServiceException? failure;
+  List<NewsArticle> result;
+  NewsServiceException? failure;
   int headlineCalls = 0;
   int lastPage = 0;
 
@@ -131,6 +131,71 @@ void main() {
 
       expect(service.lastPage, 2);
       expect(controller.articles, hasLength(2));
+    });
+
+    test('berita tersimpan dipakai saat permintaan gagal', () async {
+      final service = FakeNewsService(result: [article('a'), article('b')]);
+      final controller = NewsController(newsService: service);
+
+      // Unduhan pertama berhasil dan mengisi simpanan lokal.
+      await controller.fetchHeadlines();
+      expect(controller.isShowingCache.value, isFalse);
+
+      // Permintaan berikutnya gagal, tapi daftar tetap terisi dari simpanan.
+      service.failure = NewsServiceException('Tidak ada koneksi internet.');
+      final offline = NewsController(newsService: service);
+      await offline.fetchHeadlines();
+
+      expect(offline.articles, hasLength(2));
+      expect(offline.isShowingCache.value, isTrue);
+      expect(offline.errorMessage.value, isNull);
+      expect(offline.hasMore.value, isFalse);
+    });
+
+    test('artikel yang dibuka ditandai sudah dibaca', () async {
+      final controller = NewsController(newsService: FakeNewsService());
+      final item = article('a');
+
+      expect(controller.isRead(item), isFalse);
+      await controller.markAsRead(item);
+      expect(controller.isRead(item), isTrue);
+
+      final prefs = await SharedPreferences.getInstance();
+      expect(
+        prefs.getStringList(StorageKeys.readArticles),
+        contains('https://example.com/a'),
+      );
+    });
+
+    test('ukuran teks berputar dan tersimpan', () async {
+      final controller = NewsController(newsService: FakeNewsService());
+
+      expect(controller.readerScale.value, 1.0);
+      await controller.cycleReaderScale();
+      expect(controller.readerScale.value, Constants.readerScales[2]);
+
+      final prefs = await SharedPreferences.getInstance();
+      expect(
+        prefs.getDouble(StorageKeys.readerScale),
+        Constants.readerScales[2],
+      );
+    });
+
+    test('relatedTo tidak menyertakan artikel yang sedang dibuka', () async {
+      final controller = NewsController(
+        newsService: FakeNewsService(
+          result: [article('a'), article('b'), article('c')],
+        ),
+      );
+      await controller.fetchHeadlines();
+
+      final related = controller.relatedTo(article('a'));
+
+      expect(related, hasLength(2));
+      expect(
+        related.map((item) => item.url),
+        isNot(contains('https://example.com/a')),
+      );
     });
 
     test('bookmark tersimpan di penyimpanan lokal', () async {

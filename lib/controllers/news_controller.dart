@@ -42,9 +42,17 @@ class NewsController extends GetxController {
   int _searchRequestId = 0;
   Timer? _debounce;
 
-  // --- Bookmark & tema ---
+  /// Berita yang tampil berasal dari simpanan lokal, bukan dari server.
+  final isShowingCache = false.obs;
+
+  /// Kapan daftar berita terakhir berhasil diunduh.
+  final lastUpdated = Rxn<DateTime>();
+
+  // --- Bookmark, tema, preferensi baca ---
   final bookmarks = <NewsArticle>[].obs;
   final isDarkMode = false.obs;
+  final readArticles = <String>{}.obs;
+  final readerScale = 1.0.obs;
 
   SharedPreferences? _prefs;
 
@@ -69,6 +77,8 @@ class NewsController extends GetxController {
     final prefs = await _storage;
 
     isDarkMode.value = prefs.getBool(StorageKeys.darkMode) ?? false;
+    readerScale.value = prefs.getDouble(StorageKeys.readerScale) ?? 1.0;
+    readArticles.addAll(prefs.getStringList(StorageKeys.readArticles) ?? []);
     searchHistory.assignAll(
       prefs.getStringList(StorageKeys.searchHistory) ?? [],
     );
@@ -91,6 +101,11 @@ class NewsController extends GetxController {
     isLoading.value = true;
     errorMessage.value = null;
 
+    // Tampilkan simpanan lokal lebih dulu supaya layar tidak kosong
+    // selama menunggu jaringan.
+    if (articles.isEmpty) await _loadCache(selectedCategory.value);
+    if (requestId != _requestId) return;
+
     try {
       final response = await _newsService.getTopHeadlines(
         category: selectedCategory.value,
@@ -100,10 +115,18 @@ class NewsController extends GetxController {
 
       articles.assignAll(response.articles);
       hasMore.value = _canLoadMore(_page, response);
+      isShowingCache.value = false;
+      lastUpdated.value = DateTime.now();
+      await _saveCache(selectedCategory.value, response.articles);
     } on NewsServiceException catch (e) {
       if (requestId != _requestId) return;
-      articles.clear();
-      errorMessage.value = e.message;
+      // Masih ada simpanan lokal: pakai itu, jangan tunjukkan layar error.
+      if (articles.isNotEmpty && isShowingCache.value) {
+        hasMore.value = false;
+      } else {
+        articles.clear();
+        errorMessage.value = e.message;
+      }
     } finally {
       if (requestId == _requestId) isLoading.value = false;
     }
@@ -158,6 +181,82 @@ class NewsController extends GetxController {
     final loaded = page * Constants.pageSize;
     return loaded < (response.totalResults ?? 0) &&
         loaded < Constants.maxResults;
+  }
+
+  /// Simpan sebagian berita terbaru supaya bisa dibaca tanpa koneksi.
+  Future<void> _saveCache(String category, List<NewsArticle> items) async {
+    if (items.isEmpty) return;
+    final prefs = await _storage;
+    await prefs.setString(
+      '${StorageKeys.newsCachePrefix}$category',
+      jsonEncode({
+        'savedAt': DateTime.now().toIso8601String(),
+        'articles': items
+            .take(Constants.cachedPerCategory)
+            .map((item) => item.toJson())
+            .toList(),
+      }),
+    );
+  }
+
+  Future<void> _loadCache(String category) async {
+    final prefs = await _storage;
+    final raw = prefs.getString('${StorageKeys.newsCachePrefix}$category');
+    if (raw == null) return;
+
+    try {
+      final data = jsonDecode(raw) as Map<String, dynamic>;
+      final cached = (data['articles'] as List<dynamic>)
+          .map((item) => NewsArticle.fromJson(item as Map<String, dynamic>))
+          .toList();
+      if (cached.isEmpty) return;
+
+      articles.assignAll(cached);
+      isShowingCache.value = true;
+      hasMore.value = false;
+      lastUpdated.value = DateTime.tryParse(data['savedAt'] ?? '');
+    } catch (_) {
+      // Format cache lama/rusak: abaikan, biar diisi ulang dari server.
+      await prefs.remove('${StorageKeys.newsCachePrefix}$category');
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Riwayat baca & ukuran teks
+  // ---------------------------------------------------------------------------
+
+  bool isRead(NewsArticle article) => readArticles.contains(article.url);
+
+  /// Dipanggil saat artikel dibuka; judul yang sudah dibaca ditampilkan redup.
+  Future<void> markAsRead(NewsArticle article) async {
+    final url = article.url;
+    if (url == null || url.isEmpty || readArticles.contains(url)) return;
+
+    readArticles.add(url);
+    if (readArticles.length > Constants.maxReadHistory) {
+      readArticles.remove(readArticles.first);
+    }
+
+    final prefs = await _storage;
+    await prefs.setStringList(StorageKeys.readArticles, readArticles.toList());
+  }
+
+  /// Putar ukuran teks halaman baca: 90% -> 100% -> 115% -> 130% -> 90%.
+  Future<void> cycleReaderScale() async {
+    final scales = Constants.readerScales;
+    final next = (scales.indexOf(readerScale.value) + 1) % scales.length;
+    readerScale.value = scales[next];
+
+    final prefs = await _storage;
+    await prefs.setDouble(StorageKeys.readerScale, readerScale.value);
+  }
+
+  /// Berita lain di kategori yang sedang dibuka, untuk saran di akhir artikel.
+  List<NewsArticle> relatedTo(NewsArticle article, {int limit = 3}) {
+    return articles
+        .where((item) => item.url != article.url)
+        .take(limit)
+        .toList();
   }
 
   // ---------------------------------------------------------------------------

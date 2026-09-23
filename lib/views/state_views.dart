@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:news_app/utils/constants.dart';
+import 'package:timeago/timeago.dart' as timeago;
 
 /// Tampilan saat daftar kosong. Selalu menawarkan langkah berikutnya,
 /// bukan sekadar memberi tahu bahwa isinya kosong.
@@ -103,6 +104,53 @@ class ListFooter extends StatelessWidget {
           'Sudah sampai berita terakhir',
           style: theme.textTheme.labelMedium,
         ),
+      ),
+    );
+  }
+}
+
+/// Pita penanda bahwa isi layar berasal dari simpanan lokal.
+class OfflineBanner extends StatelessWidget {
+  final DateTime? lastUpdated;
+  final Future<void> Function() onRetry;
+
+  const OfflineBanner({
+    super.key,
+    required this.lastUpdated,
+    required this.onRetry,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      width: double.infinity,
+      color: theme.colorScheme.primary.withValues(alpha: 0.08),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.md,
+        AppSpacing.sm,
+        AppSpacing.md,
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.cloud_off_outlined,
+            size: 18,
+            color: theme.colorScheme.primary,
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(
+              lastUpdated == null
+                  ? 'Menampilkan berita tersimpan'
+                  : 'Berita tersimpan, diunduh ${timeago.format(lastUpdated!, locale: 'id')}',
+              style: theme.textTheme.labelMedium,
+            ),
+          ),
+          TextButton(onPressed: onRetry, child: const Text('Muat ulang')),
+        ],
       ),
     );
   }

@@ -48,6 +48,16 @@ class Constants {
   static const int maxResults = 100;
 
   static const int maxSearchHistory = 8;
+  static const int maxReadHistory = 200;
+
+  /// Berita hasil unduhan terakhir disimpan supaya tetap bisa dibaca offline.
+  static const int cachedPerCategory = 20;
+
+  /// Pilihan ukuran teks di halaman baca.
+  static const List<double> readerScales = [0.9, 1.0, 1.15, 1.3];
+
+  /// Perkiraan kecepatan baca orang dewasa (kata per menit).
+  static const int wordsPerMinute = 200;
   static const Duration searchDebounce = Duration(milliseconds: 500);
 }
 
@@ -56,6 +66,11 @@ class StorageKeys {
   static const String bookmarks = 'bookmarked_articles';
   static const String searchHistory = 'search_history';
   static const String darkMode = 'is_dark_mode';
+  static const String readArticles = 'read_articles';
+  static const String readerScale = 'reader_scale';
+
+  /// Awalan key cache berita per kategori, mis. cache_news_sports.
+  static const String newsCachePrefix = 'cache_news_';
 }
 
 /// Jarak antar elemen. Kelipatan 4 supaya ritme vertikalnya konsisten.
