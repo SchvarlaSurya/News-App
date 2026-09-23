@@ -54,23 +54,25 @@ class HomeView extends GetView<NewsController> {
                 children: [
                   SizedBox(
                     height: 44,
-                    child: Obx(
-                      () => ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.sm,
-                        ),
-                        itemCount: Constants.categories.length,
-                        itemBuilder: (context, index) {
-                          final category = Constants.categories[index];
-                          return CategoryChip(
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.sm,
+                      ),
+                      itemCount: Constants.categories.length,
+                      // Obx dipasang per chip: itemBuilder dijalankan belakangan,
+                      // di luar jangkauan Obx yang membungkus ListView.
+                      itemBuilder: (context, index) {
+                        final category = Constants.categories[index];
+                        return Obx(
+                          () => CategoryChip(
                             label: Constants.labelOf(category),
                             isSelected:
                                 controller.selectedCategory.value == category,
                             onTap: () => controller.selectCategory(category),
-                          );
-                        },
-                      ),
+                          ),
+                        );
+                      },
                     ),
                   ),
                   Divider(
@@ -109,6 +111,14 @@ class HomeView extends GetView<NewsController> {
       );
     }
 
+    // Semua nilai observable dibaca di sini, bukan di dalam itemBuilder yang
+    // jalan belakangan dan sudah di luar jangkauan Obx.
+    final articles = controller.articles.toList();
+    final isLoadingMore = controller.isLoadingMore.value;
+    final hasMore = controller.hasMore.value;
+    final isShowingCache = controller.isShowingCache.value;
+    final lastUpdated = controller.lastUpdated.value;
+
     return RefreshIndicator(
       onRefresh: controller.refreshHeadlines,
       child: NotificationListener<ScrollNotification>(
@@ -122,7 +132,7 @@ class HomeView extends GetView<NewsController> {
         child: ListView.separated(
           physics: const AlwaysScrollableScrollPhysics(),
           // +1 untuk lead story, +1 untuk penanda akhir daftar.
-          itemCount: controller.articles.length + 1,
+          itemCount: articles.length + 1,
           separatorBuilder: (context, index) => index == 0
               ? const SizedBox.shrink()
               : Divider(
@@ -132,20 +142,17 @@ class HomeView extends GetView<NewsController> {
                   color: Theme.of(context).colorScheme.outlineVariant,
                 ),
           itemBuilder: (context, index) {
-            if (index == controller.articles.length) {
-              return ListFooter(
-                isLoading: controller.isLoadingMore.value,
-                hasMore: controller.hasMore.value,
-              );
+            if (index == articles.length) {
+              return ListFooter(isLoading: isLoadingMore, hasMore: hasMore);
             }
 
-            final article = controller.articles[index];
+            final article = articles[index];
             if (index == 0) {
               return Column(
                 children: [
-                  if (controller.isShowingCache.value)
+                  if (isShowingCache)
                     OfflineBanner(
-                      lastUpdated: controller.lastUpdated.value,
+                      lastUpdated: lastUpdated,
                       onRetry: controller.refreshHeadlines,
                     ),
                   FeaturedNewsCard(

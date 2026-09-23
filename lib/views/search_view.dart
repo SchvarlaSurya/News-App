@@ -105,6 +105,10 @@ class _SearchViewState extends State<SearchView> {
       );
     }
 
+    final results = controller.searchResults.toList();
+    final isLoadingMore = controller.isSearchLoadingMore.value;
+    final hasMore = controller.searchHasMore.value;
+
     return NotificationListener<ScrollNotification>(
       onNotification: (notification) {
         final position = notification.metrics;
@@ -114,7 +118,7 @@ class _SearchViewState extends State<SearchView> {
         return false;
       },
       child: ListView.separated(
-        itemCount: controller.searchResults.length + 1,
+        itemCount: results.length + 1,
         separatorBuilder: (context, index) => Divider(
           height: 1,
           indent: AppSpacing.lg,
@@ -122,13 +126,10 @@ class _SearchViewState extends State<SearchView> {
           color: Theme.of(context).colorScheme.outlineVariant,
         ),
         itemBuilder: (context, index) {
-          if (index == controller.searchResults.length) {
-            return ListFooter(
-              isLoading: controller.isSearchLoadingMore.value,
-              hasMore: controller.searchHasMore.value,
-            );
+          if (index == results.length) {
+            return ListFooter(isLoading: isLoadingMore, hasMore: hasMore);
           }
-          final article = controller.searchResults[index];
+          final article = results[index];
           return NewsListItem(
             article: article,
             onTap: () => _openDetail(article),
@@ -174,7 +175,7 @@ class _SearchViewState extends State<SearchView> {
             ],
           ),
         ),
-        for (final query in controller.searchHistory)
+        for (final query in controller.searchHistory.toList())
           ListTile(
             leading: const Icon(Icons.history, size: 20),
             title: Text(query, style: theme.textTheme.titleSmall),

@@ -34,8 +34,10 @@ class BookmarkView extends GetView<NewsController> {
           );
         }
 
+        final saved = controller.bookmarks.toList();
+
         return ListView.separated(
-          itemCount: controller.bookmarks.length,
+          itemCount: saved.length,
           separatorBuilder: (context, index) => Divider(
             height: 1,
             indent: AppSpacing.lg,
@@ -43,7 +45,7 @@ class BookmarkView extends GetView<NewsController> {
             color: Theme.of(context).colorScheme.outlineVariant,
           ),
           itemBuilder: (context, index) {
-            final article = controller.bookmarks[index];
+            final article = saved[index];
             return Dismissible(
               key: ValueKey(article.url),
               direction: DismissDirection.endToStart,
